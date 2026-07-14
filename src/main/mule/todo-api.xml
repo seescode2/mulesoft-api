@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:os="http://www.mulesoft.org/schema/mule/os"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <configuration-properties file="application.yaml" />
+
+  <http:listener-config name="todo-api-http-listener-config">
+    <http:listener-connection host="${http.host}" port="${http.port}" />
+  </http:listener-config>
+
+  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
+
+  <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+
+  <os:object-store name="todos-store" persistent="true" entryTtl="30" entryTtlUnit="DAYS" expirationInterval="1" expirationIntervalUnit="HOURS" />
+
+  <flow name="todo-api-main">
+    <http:listener config-ref="todo-api-http-listener-config" path="/api/v1/*">
+      <http:response statusCode="#[vars.httpStatus default 200]">
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]">
+        <http:body>#[payload]</http:body>
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:error-response>
+    </http:listener>
+    <apikit:router config-ref="todo-api-config" />
+    <error-handler ref="todo-api-error-handler" />
+  </flow>
+
+  <sub-flow name="build-error-response">
+    <ee:transform doc:name="Build error response">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  error: vars.errorCode default "ERROR",
+  message: vars.errorMessage default "Unexpected error"
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </sub-flow>
+
+  <flow name="get:\todos:todo-api-config">
+    <os:retrieve-all config-ref="todos-store" target="storedTodos" />
+    <ee:transform doc:name="Filter todos">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var todos = (vars.storedTodos pluck ((value, key) -> value)) default []
+---
+if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status))
+  todos filter ($.status == attributes.queryParams.status)
+else
+  todos]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </flow>
+
+  <flow name="post:\todos:application\json:todo-api-config">
+    <ee:transform doc:name="Build todo">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var nowTime = now()
+---
+{
+  id: uuid(),
+  title: payload.title,
+  description: payload.description default null,
+  status: "pending",
+  dueDate: payload.dueDate default null,
+  createdAt: nowTime,
+  updatedAt: nowTime
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+    <os:store config-ref="todos-store" key="#[payload.id]" failIfPresent="true" />
+    <set-variable variableName="httpStatus" value="201" />
+  </flow>
+
+  <flow name="get:\todos\{todoId}:todo-api-config">
+    <os:retrieve config-ref="todos-store" key="#[attributes.uriParams.todoId]" target="todo">
+      <os:default-value><![CDATA[#[null]]]></os:default-value>
+    </os:retrieve>
+    <choice>
+      <when expression="#[vars.todo == null]">
+        <set-variable variableName="httpStatus" value="404" />
+        <set-variable variableName="errorCode" value="TODO_NOT_FOUND" />
+        <set-variable variableName="errorMessage" value="Todo not found" />
+        <flow-ref name="build-error-response" />
+      </when>
+      <otherwise>
+        <set-payload value="#[vars.todo]" />
+      </otherwise>
+    </choice>
+  </flow>
+
+  <flow name="put:\todos\{todoId}:application\json:todo-api-config">
+    <set-variable variableName="requestBody" value="#[payload]" />
+    <os:retrieve config-ref="todos-store" key="#[attributes.uriParams.todoId]" target="existingTodo">
+      <os:default-value><![CDATA[#[null]]]></os:default-value>
+    </os:retrieve>
+    <choice>
+      <when expression="#[vars.existingTodo == null]">
+        <set-variable variableName="httpStatus" value="404" />
+        <set-variable variableName="errorCode" value="TODO_NOT_FOUND" />
+        <set-variable variableName="errorMessage" value="Todo not found" />
+        <flow-ref name="build-error-response" />
+      </when>
+      <otherwise>
+        <ee:transform doc:name="Merge todo updates">
+          <ee:message>
+            <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.existingTodo ++ (vars.requestBody filterObject ((value, key) -> value != null)) ++ { updatedAt: now() }]]></ee:set-payload>
+          </ee:message>
+        </ee:transform>
+        <os:store config-ref="todos-store" key="#[payload.id]" failIfPresent="false" />
+      </otherwise>
+    </choice>
+  </flow>
+
+  <flow name="delete:\todos\{todoId}:todo-api-config">
+    <os:contains config-ref="todos-store" key="#[attributes.uriParams.todoId]" target="exists" />
+    <choice>
+      <when expression="#[vars.exists]">
+        <os:remove config-ref="todos-store" key="#[attributes.uriParams.todoId]" />
+        <set-variable variableName="httpStatus" value="204" />
+        <set-payload value="" />
+      </when>
+      <otherwise>
+        <set-variable variableName="httpStatus" value="404" />
+        <set-variable variableName="errorCode" value="TODO_NOT_FOUND" />
+        <set-variable variableName="errorMessage" value="Todo not found" />
+        <flow-ref name="build-error-response" />
+      </otherwise>
+    </choice>
+  </flow>
+
+  <error-handler name="todo-api-error-handler">
+    <on-error-propagate type="APIKIT:BAD_REQUEST">
+      <set-variable variableName="httpStatus" value="400" />
+      <set-variable variableName="errorCode" value="BAD_REQUEST" />
+      <set-variable variableName="errorMessage" value="#[error.description]" />
+      <flow-ref name="build-error-response" />
+    </on-error-propagate>
+    <on-error-propagate type="APIKIT:NOT_FOUND">
+      <set-variable variableName="httpStatus" value="404" />
+      <set-variable variableName="errorCode" value="NOT_FOUND" />
+      <set-variable variableName="errorMessage" value="Resource not found" />
+      <flow-ref name="build-error-response" />
+    </on-error-propagate>
+    <on-error-propagate type="ANY">
+      <set-variable variableName="httpStatus" value="500" />
+      <set-variable variableName="errorCode" value="INTERNAL_SERVER_ERROR" />
+      <set-variable variableName="errorMessage" value="#[error.description]" />
+      <flow-ref name="build-error-response" />
+    </on-error-propagate>
+  </error-handler>
+</mule>
