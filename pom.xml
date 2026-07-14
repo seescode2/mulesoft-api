@@ -33,7 +33,9 @@
             <environment>${anypoint.environment}</environment>
             <target>${anypoint.target}</target>
             <muleVersion>${mule.runtime.version}</muleVersion>
-            <server>${anypoint.server}</server>
+            <connectedAppClientId>${anypoint.client.id}</connectedAppClientId>
+            <connectedAppClientSecret>${anypoint.client.secret}</connectedAppClientSecret>
+            <connectedAppGrantType>client_credentials</connectedAppGrantType>
             <applicationName>${cloudhub.application.name}</applicationName>
             <replicas>${cloudhub.replicas}</replicas>
             <vCores>${cloudhub.vcores}</vCores>

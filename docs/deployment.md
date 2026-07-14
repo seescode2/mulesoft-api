@@ -8,13 +8,15 @@ Configure these in the repository, organization, or selected GitHub environment 
 
 | Secret | Purpose |
 | --- | --- |
-| `ANYPOINT_CLIENT_ID` | Connected App client id with permissions to deploy to Runtime Manager / CloudHub 2.0. |
-| `ANYPOINT_CLIENT_SECRET` | Connected App client secret. |
+| `ANYPOINT_CLIENT_ID` | Connected App client id passed directly to the Mule Maven Plugin for CloudHub 2.0 deployment. |
+| `ANYPOINT_CLIENT_SECRET` | Connected App client secret passed directly to the Mule Maven Plugin for CloudHub 2.0 deployment. |
 | `ANYPOINT_BUSINESS_GROUP_ID` | Anypoint business group id where the app will be deployed. |
 | `ANYPOINT_ENVIRONMENT` | Target Anypoint environment name, for example `Sandbox` or `Production`. |
 | `ANYPOINT_TARGET` | CloudHub 2.0 private space, shared space, or target name. |
 | `CLOUDHUB_APP_NAME` | Unique CloudHub application name. |
 | `API_MANAGER_ID` | API Manager instance id used by API autodiscovery. |
+
+> The Mule Maven Plugin authenticates with the Connected App deployment parameters (`connectedAppClientId`, `connectedAppClientSecret`, and `connectedAppGrantType=client_credentials`). Do not configure the GitHub workflow to concatenate the client id into a Maven server username; that causes CloudHub authentication to fail with `401 Unauthorized`.
 
 ## Optional GitHub variables or secrets
 
