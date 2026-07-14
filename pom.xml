@@ -56,6 +56,11 @@
 
   <repositories>
     <repository>
+      <id>central</id>
+      <name>Maven Central</name>
+      <url>https://repo.maven.apache.org/maven2</url>
+    </repository>
+    <repository>
       <id>anypoint-exchange-v3</id>
       <name>Anypoint Exchange</name>
       <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
@@ -88,12 +93,6 @@
       <groupId>org.mule.modules</groupId>
       <artifactId>mule-apikit-module</artifactId>
       <version>1.11.2</version>
-      <classifier>mule-plugin</classifier>
-    </dependency>
-    <dependency>
-      <groupId>org.mule.connectors</groupId>
-      <artifactId>mule-objectstore-connector</artifactId>
-      <version>1.2.2</version>
       <classifier>mule-plugin</classifier>
     </dependency>
   </dependencies>
