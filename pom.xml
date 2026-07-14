@@ -27,7 +27,7 @@
         <version>${mule.maven.plugin.version}</version>
         <extensions>true</extensions>
         <configuration>
-          <cloudHub2Deployment>
+          <cloudhub2Deployment>
             <uri>https://anypoint.mulesoft.com</uri>
             <provider>MC</provider>
             <environment>${anypoint.environment}</environment>
@@ -42,7 +42,7 @@
               <api.manager.id>${api.manager.id}</api.manager.id>
               <mule.env>${anypoint.environment}</mule.env>
             </properties>
-          </cloudHub2Deployment>
+          </cloudhub2Deployment>
         </configuration>
       </plugin>
       <plugin>
