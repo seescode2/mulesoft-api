@@ -3,7 +3,6 @@
       xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
-      xmlns:os="http://www.mulesoft.org/schema/mule/os"
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -12,7 +11,6 @@
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
         http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
         http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
-        http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
         http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <configuration-properties file="application.yaml" />
@@ -24,8 +22,6 @@
   <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
 
   <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-
-  <os:object-store name="todos-store" persistent="true" entryTtl="30" entryTtlUnit="DAYS" expirationInterval="1" expirationIntervalUnit="HOURS" />
 
   <flow name="todo-api-main">
     <http:listener config-ref="todo-api-http-listener-config" path="/api/v1/*">
@@ -56,12 +52,30 @@ output application/json
   </sub-flow>
 
   <flow name="get:\todos:todo-api-config">
-    <os:retrieve-all config-ref="todos-store" target="storedTodos" />
-    <ee:transform doc:name="Filter todos">
+    <ee:transform doc:name="Return mock todos">
       <ee:message>
         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var todos = (vars.storedTodos pluck ((value, key) -> value)) default []
+var todos = [
+  {
+    id: "mock-todo-1",
+    title: "Review API requirements",
+    description: "Mocked todo returned by the API",
+    status: "pending",
+    dueDate: "2026-07-15",
+    createdAt: "2026-07-14T00:00:00Z",
+    updatedAt: "2026-07-14T00:00:00Z"
+  },
+  {
+    id: "mock-todo-2",
+    title: "Deploy Mule app",
+    description: "Second mocked todo returned by the API",
+    status: "completed",
+    dueDate: null,
+    createdAt: "2026-07-14T00:00:00Z",
+    updatedAt: "2026-07-14T00:00:00Z"
+  }
+]
 ---
 if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status))
   todos filter ($.status == attributes.queryParams.status)
@@ -72,15 +86,15 @@ else
   </flow>
 
   <flow name="post:\todos:application\json:todo-api-config">
-    <ee:transform doc:name="Build todo">
+    <ee:transform doc:name="Return mock created todo">
       <ee:message>
         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 var nowTime = now()
 ---
 {
-  id: uuid(),
-  title: payload.title,
+  id: "mock-created-todo",
+  title: payload.title default "Mock todo",
   description: payload.description default null,
   status: "pending",
   dueDate: payload.dueDate default null,
@@ -89,68 +103,51 @@ var nowTime = now()
 }]]></ee:set-payload>
       </ee:message>
     </ee:transform>
-    <os:store config-ref="todos-store" key="#[payload.id]" failIfPresent="true" />
     <set-variable variableName="httpStatus" value="201" />
   </flow>
 
-  <flow name="get:\todos\{todoId}:todo-api-config">
-    <os:retrieve config-ref="todos-store" key="#[attributes.uriParams.todoId]" target="todo">
-      <os:default-value><![CDATA[#[null]]]></os:default-value>
-    </os:retrieve>
-    <choice>
-      <when expression="#[vars.todo == null]">
-        <set-variable variableName="httpStatus" value="404" />
-        <set-variable variableName="errorCode" value="TODO_NOT_FOUND" />
-        <set-variable variableName="errorMessage" value="Todo not found" />
-        <flow-ref name="build-error-response" />
-      </when>
-      <otherwise>
-        <set-payload value="#[vars.todo]" />
-      </otherwise>
-    </choice>
-  </flow>
-
-  <flow name="put:\todos\{todoId}:application\json:todo-api-config">
-    <set-variable variableName="requestBody" value="#[payload]" />
-    <os:retrieve config-ref="todos-store" key="#[attributes.uriParams.todoId]" target="existingTodo">
-      <os:default-value><![CDATA[#[null]]]></os:default-value>
-    </os:retrieve>
-    <choice>
-      <when expression="#[vars.existingTodo == null]">
-        <set-variable variableName="httpStatus" value="404" />
-        <set-variable variableName="errorCode" value="TODO_NOT_FOUND" />
-        <set-variable variableName="errorMessage" value="Todo not found" />
-        <flow-ref name="build-error-response" />
-      </when>
-      <otherwise>
-        <ee:transform doc:name="Merge todo updates">
-          <ee:message>
-            <ee:set-payload><![CDATA[%dw 2.0
+  <flow name="get:\todos\(todoId):todo-api-config">
+    <ee:transform doc:name="Return mock todo">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-vars.existingTodo ++ (vars.requestBody filterObject ((value, key) -> value != null)) ++ { updatedAt: now() }]]></ee:set-payload>
-          </ee:message>
-        </ee:transform>
-        <os:store config-ref="todos-store" key="#[payload.id]" failIfPresent="false" />
-      </otherwise>
-    </choice>
+{
+  id: attributes.uriParams.todoId,
+  title: "Mock todo",
+  description: "Mocked todo returned by id",
+  status: "pending",
+  dueDate: "2026-07-15",
+  createdAt: "2026-07-14T00:00:00Z",
+  updatedAt: "2026-07-14T00:00:00Z"
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
   </flow>
 
-  <flow name="delete:\todos\{todoId}:todo-api-config">
-    <os:contains config-ref="todos-store" key="#[attributes.uriParams.todoId]" target="exists" />
-    <choice>
-      <when expression="#[vars.exists]">
-        <os:remove config-ref="todos-store" key="#[attributes.uriParams.todoId]" />
-        <set-variable variableName="httpStatus" value="204" />
-        <set-payload value="" />
-      </when>
-      <otherwise>
-        <set-variable variableName="httpStatus" value="404" />
-        <set-variable variableName="errorCode" value="TODO_NOT_FOUND" />
-        <set-variable variableName="errorMessage" value="Todo not found" />
-        <flow-ref name="build-error-response" />
-      </otherwise>
-    </choice>
+  <flow name="put:\todos\(todoId):application\json:todo-api-config">
+    <ee:transform doc:name="Return mock updated todo">
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var nowTime = now()
+---
+{
+  id: attributes.uriParams.todoId,
+  title: payload.title default "Mock todo",
+  description: payload.description default "Mocked updated todo",
+  status: payload.status default "pending",
+  dueDate: payload.dueDate default null,
+  createdAt: "2026-07-14T00:00:00Z",
+  updatedAt: nowTime
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </flow>
+
+  <flow name="delete:\todos\(todoId):todo-api-config">
+    <set-variable variableName="httpStatus" value="204" />
+    <set-payload value="" />
   </flow>
 
   <error-handler name="todo-api-error-handler">

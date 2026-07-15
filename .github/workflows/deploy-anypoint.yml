@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'release/**'
+      - 'raml/**'
   workflow_dispatch:
 
 env:
@@ -12,6 +13,7 @@ env:
 jobs:
   deploy:
     name: Deploy Mule app
+    if: ${{ startsWith(github.ref_name, 'release/') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: ${{ vars.GITHUB_DEPLOYMENT_ENVIRONMENT || 'anypoint' }}
 
@@ -34,7 +36,7 @@ jobs:
 
       - name: Build and deploy to CloudHub 2.0
         run: |
-          mvn --batch-mode --update-snapshots clean deploy -DmuleDeploy \
+          mvn --batch-mode --update-snapshots -U clean deploy -DmuleDeploy \
             -Danypoint.server=${ANYPOINT_SERVER_ID} \
             -Danypoint.business.group.id="${ANYPOINT_BUSINESS_GROUP_ID}" \
             -Danypoint.environment="${ANYPOINT_ENVIRONMENT}" \
@@ -53,3 +55,83 @@ jobs:
           CLOUDHUB_REPLICAS: ${{ vars.CLOUDHUB_REPLICAS }}
           CLOUDHUB_VCORES: ${{ vars.CLOUDHUB_VCORES }}
           MULE_RUNTIME_VERSION: ${{ vars.MULE_RUNTIME_VERSION }}
+
+  deploy-raml-to-exchange:
+    name: Deploy RAML to Exchange
+    if: ${{ startsWith(github.ref_name, 'raml/') || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+
+    env:
+      ANYPOINT_ORG_ID: ${{ secrets.ANYPOINT_BUSINESS_GROUP_ID }}
+      EXCHANGE_ASSET_ID: ${{ vars.EXCHANGE_ASSET_ID || 'mulesoft-todo-api' }}
+      EXCHANGE_ASSET_NAME: ${{ vars.EXCHANGE_ASSET_NAME || 'Todo API' }}
+      EXCHANGE_API_VERSION: ${{ vars.EXCHANGE_API_VERSION || 'v1' }}
+      RAML_MAIN_FILE: ${{ vars.RAML_MAIN_FILE || 'todo-api.raml' }}
+      RAML_SOURCE_FILE: ${{ vars.RAML_SOURCE_FILE || 'src/main/resources/api/todo-api.raml' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Exchange asset metadata
+        id: exchange
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pom_version=$(python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+          root = ET.parse('pom.xml').getroot()
+          print(root.findtext('m:version', default='', namespaces=ns))
+          PY
+          )
+          branch_version="${GITHUB_REF_NAME#raml/}"
+
+          if [[ "${GITHUB_REF_NAME}" == raml/* && -n "${branch_version}" ]]; then
+            asset_version="${branch_version}"
+          else
+            asset_version="${EXCHANGE_ASSET_VERSION:-${pom_version%-SNAPSHOT}}"
+          fi
+
+          if [[ ! "${asset_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Exchange asset version '${asset_version}' must be semver. Use a raml/<semver> branch or set EXCHANGE_ASSET_VERSION." >&2
+            exit 1
+          fi
+
+          echo "asset_version=${asset_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Package RAML
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "${RAML_SOURCE_FILE}"
+          mkdir -p build/exchange-raml
+          cp "${RAML_SOURCE_FILE}" "build/exchange-raml/${RAML_MAIN_FILE}"
+          (cd build/exchange-raml && zip -q -r ../raml.zip .)
+
+      - name: Deploy RAML to Exchange
+        shell: bash
+        env:
+          ANYPOINT_CLIENT_ID: ${{ secrets.ANYPOINT_CLIENT_ID }}
+          ANYPOINT_CLIENT_SECRET: ${{ secrets.ANYPOINT_CLIENT_SECRET }}
+          EXCHANGE_ASSET_VERSION: ${{ steps.exchange.outputs.asset_version }}
+        run: |
+          set -euo pipefail
+
+          token_response=$(curl --silent --show-error --fail-with-body \
+            --request POST 'https://anypoint.mulesoft.com/accounts/api/v2/oauth2/token' \
+            --header 'Content-Type: application/json' \
+            --data "{\"grant_type\":\"client_credentials\",\"client_id\":\"${ANYPOINT_CLIENT_ID}\",\"client_secret\":\"${ANYPOINT_CLIENT_SECRET}\"}")
+          access_token=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "${token_response}")
+
+          curl --silent --show-error --fail-with-body \
+            --request POST \
+            --header "Authorization: bearer ${access_token}" \
+            --header 'x-sync-publication: true' \
+            --form "name=${EXCHANGE_ASSET_NAME}" \
+            --form "description=${EXCHANGE_ASSET_NAME} RAML specification" \
+            --form "properties.mainFile=${RAML_MAIN_FILE}" \
+            --form "properties.apiVersion=${EXCHANGE_API_VERSION}" \
+            --form "files.raml.zip=@build/raml.zip" \
+            "https://anypoint.mulesoft.com/exchange/api/v2/organizations/${ANYPOINT_ORG_ID}/assets/${ANYPOINT_ORG_ID}/${EXCHANGE_ASSET_ID}/${EXCHANGE_ASSET_VERSION}"

@@ -27,7 +27,7 @@
         <version>${mule.maven.plugin.version}</version>
         <extensions>true</extensions>
         <configuration>
-          <cloudHub2Deployment>
+          <cloudhub2Deployment>
             <uri>https://anypoint.mulesoft.com</uri>
             <provider>MC</provider>
             <environment>${anypoint.environment}</environment>
@@ -42,7 +42,7 @@
               <api.manager.id>${api.manager.id}</api.manager.id>
               <mule.env>${anypoint.environment}</mule.env>
             </properties>
-          </cloudHub2Deployment>
+          </cloudhub2Deployment>
         </configuration>
       </plugin>
       <plugin>
@@ -55,6 +55,11 @@
   </build>
 
   <repositories>
+    <repository>
+      <id>central</id>
+      <name>Maven Central</name>
+      <url>https://repo.maven.apache.org/maven2</url>
+    </repository>
     <repository>
       <id>anypoint-exchange-v3</id>
       <name>Anypoint Exchange</name>
@@ -88,12 +93,6 @@
       <groupId>org.mule.modules</groupId>
       <artifactId>mule-apikit-module</artifactId>
       <version>1.11.2</version>
-      <classifier>mule-plugin</classifier>
-    </dependency>
-    <dependency>
-      <groupId>org.mule.connectors</groupId>
-      <artifactId>mule-objectstore-connector</artifactId>
-      <version>1.2.2</version>
       <classifier>mule-plugin</classifier>
     </dependency>
   </dependencies>
