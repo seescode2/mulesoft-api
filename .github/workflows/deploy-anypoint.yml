@@ -21,7 +21,7 @@ on:
         default: 'mulesoft-todo-api-release'
 
 env:
-  ANYPOINT_SERVER_ID: anypoint-platform
+  ANYPOINT_EXCHANGE_SERVER_ID: anypoint-exchange-v3
 
 jobs:
   deploy:
@@ -41,11 +41,11 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Configure Anypoint Maven credentials
+      - name: Configure Anypoint Exchange credentials
         uses: s4u/maven-settings-action@v3.1.0
         with:
           servers: |
-            [{"id":"${{ env.ANYPOINT_SERVER_ID }}","username":"~~~Client~~~${{ secrets.ANYPOINT_CLIENT_ID }}","password":"${{ secrets.ANYPOINT_CLIENT_SECRET }}"}]
+            [{"id":"${{ env.ANYPOINT_EXCHANGE_SERVER_ID }}","username":"~~~Client~~~","password":"${{ secrets.ANYPOINT_CLIENT_ID }}~?~${{ secrets.ANYPOINT_CLIENT_SECRET }}"}]
 
       - name: Validate deployment configuration
         shell: bash
@@ -53,13 +53,15 @@ jobs:
           ANYPOINT_CLIENT_ID: ${{ secrets.ANYPOINT_CLIENT_ID }}
           ANYPOINT_CLIENT_SECRET: ${{ secrets.ANYPOINT_CLIENT_SECRET }}
           ANYPOINT_BUSINESS_GROUP_ID: ${{ secrets.ANYPOINT_BUSINESS_GROUP_ID }}
+          ANYPOINT_ENV_CLIENT_ID: ${{ secrets.ANYPOINT_ENV_CLIENT_ID }}
+          ANYPOINT_ENV_CLIENT_SECRET: ${{ secrets.ANYPOINT_ENV_CLIENT_SECRET }}
           ANYPOINT_ENVIRONMENT: ${{ inputs.anypoint_environment || vars.ANYPOINT_ENVIRONMENT || secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
           ANYPOINT_TARGET: ${{ inputs.anypoint_target || vars.ANYPOINT_TARGET || secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
           CLOUDHUB_APP_NAME: ${{ inputs.cloudhub_app_name || vars.CLOUDHUB_APP_NAME || secrets.CLOUDHUB_APP_NAME || 'mulesoft-todo-api-release' }}
         run: |
           set -euo pipefail
 
-          required=(ANYPOINT_CLIENT_ID ANYPOINT_CLIENT_SECRET ANYPOINT_BUSINESS_GROUP_ID ANYPOINT_ENVIRONMENT ANYPOINT_TARGET CLOUDHUB_APP_NAME)
+          required=(ANYPOINT_CLIENT_ID ANYPOINT_CLIENT_SECRET ANYPOINT_BUSINESS_GROUP_ID ANYPOINT_ENV_CLIENT_ID ANYPOINT_ENV_CLIENT_SECRET ANYPOINT_ENVIRONMENT ANYPOINT_TARGET CLOUDHUB_APP_NAME)
           missing=()
           for name in "${required[@]}"; do
             if [[ -z "${!name:-}" ]]; then
@@ -82,30 +84,37 @@ jobs:
             "https://anypoint.mulesoft.com/accounts/api/organizations/${ANYPOINT_BUSINESS_GROUP_ID}/environments" \
             > /dev/null
 
-      - name: Build and deploy to Runtime Manager
+      - name: Build and publish application to Exchange
+        shell: bash
+        run: mvn --batch-mode --no-transfer-progress clean deploy
+
+      - name: Deploy application to Runtime Manager
         shell: bash
         run: |
           set -euo pipefail
 
-          mvn --batch-mode --update-snapshots -U clean deploy -DmuleDeploy \
-            -Danypoint.server="${ANYPOINT_SERVER_ID}" \
+          mvn --batch-mode --no-transfer-progress mule:deploy -DmuleDeploy \
+            -Danypoint.client.id="${ANYPOINT_CLIENT_ID}" \
+            -Danypoint.client.secret="${ANYPOINT_CLIENT_SECRET}" \
+            -Danypoint.platform.client.id="${ANYPOINT_ENV_CLIENT_ID}" \
+            -Danypoint.platform.client.secret="${ANYPOINT_ENV_CLIENT_SECRET}" \
             -Danypoint.business.group.id="${ANYPOINT_BUSINESS_GROUP_ID}" \
             -Danypoint.environment="${ANYPOINT_ENVIRONMENT}" \
             -Danypoint.target="${ANYPOINT_TARGET}" \
             -Dcloudhub.application.name="${CLOUDHUB_APP_NAME}" \
-            -Dcloudhub.replicas="${CLOUDHUB_REPLICAS:-1}" \
-            -Dcloudhub.vcores="${CLOUDHUB_VCORES:-0.1}" \
-            -Dapi.manager.id="${API_MANAGER_ID:-0}" \
-            ${MULE_RUNTIME_VERSION:+-Dmule.runtime.version="${MULE_RUNTIME_VERSION}"}
+            -Dcloudhub.replicas="1" \
+            -Dcloudhub.vcores="0.2" \
+            -Dapi.manager.id="${API_MANAGER_ID}"
         env:
+          ANYPOINT_CLIENT_ID: ${{ secrets.ANYPOINT_CLIENT_ID }}
+          ANYPOINT_CLIENT_SECRET: ${{ secrets.ANYPOINT_CLIENT_SECRET }}
           ANYPOINT_BUSINESS_GROUP_ID: ${{ secrets.ANYPOINT_BUSINESS_GROUP_ID }}
+          ANYPOINT_ENV_CLIENT_ID: ${{ secrets.ANYPOINT_ENV_CLIENT_ID }}
+          ANYPOINT_ENV_CLIENT_SECRET: ${{ secrets.ANYPOINT_ENV_CLIENT_SECRET }}
           ANYPOINT_ENVIRONMENT: ${{ inputs.anypoint_environment || vars.ANYPOINT_ENVIRONMENT || secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
           ANYPOINT_TARGET: ${{ inputs.anypoint_target || vars.ANYPOINT_TARGET || secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
           CLOUDHUB_APP_NAME: ${{ inputs.cloudhub_app_name || vars.CLOUDHUB_APP_NAME || secrets.CLOUDHUB_APP_NAME || 'mulesoft-todo-api-release' }}
-          API_MANAGER_ID: ${{ secrets.API_MANAGER_ID || vars.API_MANAGER_ID }}
-          CLOUDHUB_REPLICAS: ${{ vars.CLOUDHUB_REPLICAS }}
-          CLOUDHUB_VCORES: ${{ vars.CLOUDHUB_VCORES }}
-          MULE_RUNTIME_VERSION: ${{ vars.MULE_RUNTIME_VERSION }}
+          API_MANAGER_ID: ${{ secrets.API_MANAGER_ID || vars.API_MANAGER_ID || '21030256' }}
 
   deploy-raml-to-exchange:
     name: Deploy RAML to Exchange
