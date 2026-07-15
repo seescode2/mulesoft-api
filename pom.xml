@@ -33,17 +33,21 @@
             <environment>${anypoint.environment}</environment>
             <target>${anypoint.target}</target>
             <muleVersion>${mule.runtime.version}</muleVersion>
-            <connectedAppClientId>${anypoint.client.id}</connectedAppClientId>
-            <connectedAppClientSecret>${anypoint.client.secret}</connectedAppClientSecret>
-            <connectedAppGrantType>client_credentials</connectedAppGrantType>
+            <javaVersion>17</javaVersion>
+            <releaseChannel>LTS</releaseChannel>
+            <server>anypoint-exchange-v3</server>
             <applicationName>${cloudhub.application.name}</applicationName>
+            <businessGroupId>${anypoint.business.group.id}</businessGroupId>
             <replicas>${cloudhub.replicas}</replicas>
             <vCores>${cloudhub.vcores}</vCores>
-            <businessGroupId>${anypoint.business.group.id}</businessGroupId>
             <properties>
               <api.manager.id>${api.manager.id}</api.manager.id>
               <mule.env>${anypoint.environment}</mule.env>
             </properties>
+            <secureProperties>
+              <anypoint.platform.client_id>${anypoint.client.id}</anypoint.platform.client_id>
+              <anypoint.platform.client_secret>${anypoint.client.secret}</anypoint.platform.client_secret>
+            </secureProperties>
           </cloudhub2Deployment>
         </configuration>
       </plugin>
