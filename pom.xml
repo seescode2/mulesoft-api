@@ -6,7 +6,7 @@
 
   <groupId>99252e89-57fb-4c7e-9289-d6be9663fd61</groupId>
   <artifactId>mulesoft-todo-api-app</artifactId>
-  <version>1.0.5</version>
+  <version>1.0.6</version>
   <packaging>mule-application</packaging>
 
   <name>mulesoft-todo-api</name>
