@@ -99,7 +99,7 @@ jobs:
           ANYPOINT_ENV_CLIENT_SECRET: ${{ secrets.ANYPOINT_ENV_CLIENT_SECRET }}
           ANYPOINT_ENVIRONMENT: ${{ secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
           ANYPOINT_TARGET: ${{ secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
-          CLOUDHUB_APP_NAME: mulesoft-todo-api-release
+          CLOUDHUB_APP_NAME: ${{ secrets.CLOUDHUB_APP_NAME || 'mulesoft-todo-api-release' }}
           API_MANAGER_ID: ${{ secrets.API_MANAGER_ID || '21030256' }}
 
   deploy-raml-to-exchange:
