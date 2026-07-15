@@ -19,7 +19,7 @@
     <http:listener-connection host="${http.host}" port="${http.port}" />
   </http:listener-config>
 
-  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
+  <!-- <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" /> -->
 
   <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
 

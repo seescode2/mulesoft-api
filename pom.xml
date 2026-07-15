@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.example</groupId>
+  <groupId>99252e89-57fb-4c7e-9289-d6be9663fd61</groupId>
   <artifactId>mulesoft-todo-api</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <packaging>mule-application</packaging>
@@ -15,8 +15,6 @@
     <mule.maven.plugin.version>4.3.0</mule.maven.plugin.version>
     <mule.runtime.version>4.8.0</mule.runtime.version>
     <munit.version>3.1.0</munit.version>
-    <app.runtime>${mule.runtime.version}</app.runtime>
-    <api.manager.id>0</api.manager.id>
   </properties>
 
   <build>
@@ -32,7 +30,7 @@
             <provider>MC</provider>
             <environment>${anypoint.environment}</environment>
             <target>${anypoint.target}</target>
-            <muleVersion>${mule.runtime.version}</muleVersion>
+            <muleVersion>4.9.7</muleVersion>
             <javaVersion>17</javaVersion>
             <releaseChannel>LTS</releaseChannel>
             <server>anypoint-exchange-v3</server>
@@ -41,7 +39,7 @@
             <replicas>${cloudhub.replicas}</replicas>
             <vCores>${cloudhub.vcores}</vCores>
             <properties>
-              <api.manager.id>${api.manager.id}</api.manager.id>
+              <!-- <api.manager.id>${api.manager.id}</api.manager.id> -->
               <mule.env>${anypoint.environment}</mule.env>
             </properties>
             <secureProperties>
@@ -87,6 +85,16 @@
       <snapshots><enabled>false</enabled></snapshots>
     </pluginRepository>
   </pluginRepositories>
+
+
+  <distributionManagement>
+    <repository>
+      <id>anypoint-exchange-v3</id>
+      <name>Anypoint Exchange</name>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/organizations/99252e89-57fb-4c7e-9289-d6be9663fd61/maven</url>
+      <layout>default</layout>
+    </repository>
+  </distributionManagement>
 
   <dependencies>
     <dependency>
