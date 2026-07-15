@@ -63,6 +63,25 @@ The current live API path is:
 /api/v1/todos
 ```
 
+## Update RAML workflow
+- Checkout `main` branch
+- Pull latest changes
+- Make new branch called `feature/something`.
+- Edit the raml file in `src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  
+- Commit code
+- Make new branch called `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.  Check exchange to make sure this version does not already exist.
+- Push.  This should automatically cause github actions to push this to Exchange.
+
+## Update Flows workflow
+- Checkout existing `feature/something`
+- Pull latest changes
+- Edit the flows.  
+- Make sure to increment the pom version.  Make sure this version does not already exist on Exchange.
+- Commit code
+- Make new branch called `release/*.*.*` where * is a semantic version number it will deploy to Exchange.
+- Push.  This should automatically cause github actions to deploy to Sandbox environment
+- Do not merge code back into `main`.  Keep `main` as is.
+
 ## References
 
 - [GitHub: Using secrets in GitHub Actions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
