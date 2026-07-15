@@ -11,14 +11,14 @@ Configure these in the repository, organization, or selected GitHub environment 
 | `ANYPOINT_CLIENT_ID` | Connected App client id with permissions to deploy to Runtime Manager / CloudHub 2.0. |
 | `ANYPOINT_CLIENT_SECRET` | Connected App client secret. |
 | `ANYPOINT_BUSINESS_GROUP_ID` | Anypoint business group id where the app will be deployed. |
-| `ANYPOINT_ENVIRONMENT` | Target Anypoint environment name, for example `Sandbox` or `Production`. |
-| `ANYPOINT_TARGET` | CloudHub 2.0 private space, shared space, or target name. |
-| `CLOUDHUB_APP_NAME` | Unique CloudHub application name. |
-| `API_MANAGER_ID` | API Manager instance id used by API autodiscovery. |
+| `ANYPOINT_ENVIRONMENT` | Target Anypoint environment name. Defaults to `Sandbox` if unset. |
+| `ANYPOINT_TARGET` | CloudHub 2.0 private space, shared space, or target name. Defaults to `Cloudhub-US-East-2` if unset. |
+| `CLOUDHUB_APP_NAME` | Unique CloudHub application name. Defaults to `mulesoft-todo-api-release` if unset. |
+| `API_MANAGER_ID` | Optional API Manager instance id used by API autodiscovery; defaults to `0`. |
 
 ## Optional GitHub variables or secrets
 
-These can be set as GitHub environment variables, repository variables, or secrets. The workflow provides defaults if omitted.
+These can be set as GitHub environment variables, repository variables, or secrets. The workflow provides defaults if omitted. Manual workflow runs can also override the Anypoint environment, deployment target, and CloudHub application name.
 
 | Name | Default | Purpose |
 | --- | --- | --- |
