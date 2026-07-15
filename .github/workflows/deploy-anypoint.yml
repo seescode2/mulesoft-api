@@ -5,20 +5,6 @@ on:
     branches:
       - 'release/**'
       - 'raml/**'
-  workflow_dispatch:
-    inputs:
-      anypoint_environment:
-        description: 'Anypoint environment for Runtime Manager deployment'
-        required: false
-        default: 'Sandbox'
-      anypoint_target:
-        description: 'CloudHub 2.0 target/private space name'
-        required: false
-        default: 'Cloudhub-US-East-2'
-      cloudhub_app_name:
-        description: 'Runtime Manager application name'
-        required: false
-        default: 'mulesoft-todo-api-release'
 
 env:
   ANYPOINT_EXCHANGE_SERVER_ID: anypoint-exchange-v3
@@ -28,7 +14,7 @@ jobs:
     name: Deploy Mule app to Runtime Manager
     if: ${{ startsWith(github.ref_name, 'release/') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    environment: ${{ vars.GITHUB_DEPLOYMENT_ENVIRONMENT || 'anypoint' }}
+    environment: anypoint
 
     steps:
       - name: Checkout
@@ -55,9 +41,9 @@ jobs:
           ANYPOINT_BUSINESS_GROUP_ID: ${{ secrets.ANYPOINT_BUSINESS_GROUP_ID }}
           ANYPOINT_ENV_CLIENT_ID: ${{ secrets.ANYPOINT_ENV_CLIENT_ID }}
           ANYPOINT_ENV_CLIENT_SECRET: ${{ secrets.ANYPOINT_ENV_CLIENT_SECRET }}
-          ANYPOINT_ENVIRONMENT: ${{ inputs.anypoint_environment || vars.ANYPOINT_ENVIRONMENT || secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
-          ANYPOINT_TARGET: ${{ inputs.anypoint_target || vars.ANYPOINT_TARGET || secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
-          CLOUDHUB_APP_NAME: ${{ inputs.cloudhub_app_name || vars.CLOUDHUB_APP_NAME || secrets.CLOUDHUB_APP_NAME || 'mulesoft-todo-api-release' }}
+          ANYPOINT_ENVIRONMENT: ${{ secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
+          ANYPOINT_TARGET: ${{ secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
+          CLOUDHUB_APP_NAME: ${{ secrets.CLOUDHUB_APP_NAME || 'mulesoft-todo-api-release' }}
         run: |
           set -euo pipefail
 
@@ -111,10 +97,10 @@ jobs:
           ANYPOINT_BUSINESS_GROUP_ID: ${{ secrets.ANYPOINT_BUSINESS_GROUP_ID }}
           ANYPOINT_ENV_CLIENT_ID: ${{ secrets.ANYPOINT_ENV_CLIENT_ID }}
           ANYPOINT_ENV_CLIENT_SECRET: ${{ secrets.ANYPOINT_ENV_CLIENT_SECRET }}
-          ANYPOINT_ENVIRONMENT: ${{ inputs.anypoint_environment || vars.ANYPOINT_ENVIRONMENT || secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
-          ANYPOINT_TARGET: ${{ inputs.anypoint_target || vars.ANYPOINT_TARGET || secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
-          CLOUDHUB_APP_NAME: ${{ inputs.cloudhub_app_name || vars.CLOUDHUB_APP_NAME || secrets.CLOUDHUB_APP_NAME || 'mulesoft-todo-api-release' }}
-          API_MANAGER_ID: ${{ secrets.API_MANAGER_ID || vars.API_MANAGER_ID || '21030256' }}
+          ANYPOINT_ENVIRONMENT: ${{ secrets.ANYPOINT_ENVIRONMENT || 'Sandbox' }}
+          ANYPOINT_TARGET: ${{ secrets.ANYPOINT_TARGET || 'Cloudhub-US-East-2' }}
+          CLOUDHUB_APP_NAME: mulesoft-todo-api-release
+          API_MANAGER_ID: ${{ secrets.API_MANAGER_ID || '21030256' }}
 
   deploy-raml-to-exchange:
     name: Deploy RAML to Exchange
