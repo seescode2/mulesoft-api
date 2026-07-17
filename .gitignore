@@ -2,3 +2,7 @@ target/
 .mule/
 .DS_Store
 *.tmp
+
+# Generated from text fixtures in src/main/resources/certs/*.b64
+src/main/resources/badssl-client.p12
+src/main/resources/self-signed-badssl-truststore.jks

@@ -3,6 +3,7 @@
       xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -11,20 +12,37 @@
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
         http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
         http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
         http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <configuration-properties file="application.yaml" />
 
-  <http:listener-config name="todo-api-http-listener-config">
+  <http:listener-config name="badssl-api-http-listener-config">
     <http:listener-connection host="${http.host}" port="${http.port}" />
   </http:listener-config>
 
-  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
+  <http:request-config name="client-badssl-mtls-request-config">
+    <http:request-connection protocol="HTTPS" host="${badssl.client.host}" port="443">
+      <tls:context>
+        <tls:key-store path="${badssl.client.keystore.path}" password="${badssl.client.keystore.password}" type="pkcs12" />
+      </tls:context>
+    </http:request-connection>
+  </http:request-config>
 
-  <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+  <http:request-config name="self-signed-badssl-request-config">
+    <http:request-connection protocol="HTTPS" host="${badssl.selfSigned.host}" port="443">
+      <tls:context>
+        <tls:trust-store path="${badssl.selfSigned.truststore.path}" password="${badssl.selfSigned.truststore.password}" type="pkcs12" />
+      </tls:context>
+    </http:request-connection>
+  </http:request-config>
 
-  <flow name="todo-api-main">
-    <http:listener config-ref="todo-api-http-listener-config" path="/api/v1/*">
+  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="badssl-api-main" />
+
+  <apikit:config name="badssl-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+
+  <flow name="badssl-api-main">
+    <http:listener config-ref="badssl-api-http-listener-config" path="/api/v1/*">
       <http:response statusCode="#[vars.httpStatus default 200]">
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:response>
@@ -33,8 +51,8 @@
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:error-response>
     </http:listener>
-    <apikit:router config-ref="todo-api-config" />
-    <error-handler ref="todo-api-error-handler" />
+    <apikit:router config-ref="badssl-api-config" />
+    <error-handler ref="badssl-api-error-handler" />
   </flow>
 
   <sub-flow name="build-error-response">
@@ -51,106 +69,35 @@ output application/json
     </ee:transform>
   </sub-flow>
 
-  <flow name="get:\todos:todo-api-config">
-    <ee:transform doc:name="Return mock todos">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var todos = [
-  {
-    id: "mock-todo-1",
-    title: "Review API requirements Madam",
-    description: "Mocked todo returned by the API",
-    status: "pending",
-    dueDate: "2026-07-15",
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  },
-  {
-    id: "mock-todo-2",
-    title: "Deploy Mule app",
-    description: "Second mocked todo returned by the API",
-    status: "completed",
-    dueDate: null,
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  }
-]
----
-if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status))
-  todos filter ($.status == attributes.queryParams.status)
-else
-  todos]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
-  </flow>
-
-  <flow name="post:\todos:application\json:todo-api-config">
-    <ee:transform doc:name="Return mock created todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var nowTime = now()
----
-{
-  id: "mock-created-todo",
-  title: payload.title default "Mock todo",
-  description: payload.description default null,
-  status: "pending",
-  dueDate: payload.dueDate default null,
-  createdAt: nowTime,
-  updatedAt: nowTime
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
-    <set-variable variableName="httpStatus" value="201" />
-  </flow>
-
-  <flow name="get:\todos\(todoId):todo-api-config">
-    <ee:transform doc:name="Return mock todo">
+  <sub-flow name="build-badssl-response">
+    <ee:transform doc:name="Build BadSSL response">
       <ee:message>
         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-  id: attributes.uriParams.todoId,
-  title: "Mock todo",
-  description: "Mocked todo returned by id",
-  status: "pending",
-  dueDate: "2026-07-15",
-  createdAt: "2026-07-14T00:00:00Z",
-  updatedAt: "2026-07-14T00:00:00Z"
+  target: vars.targetUrl,
+  status: attributes.statusCode,
+  reasonPhrase: attributes.reasonPhrase default null,
+  body: payload as String
 }]]></ee:set-payload>
       </ee:message>
     </ee:transform>
+  </sub-flow>
+
+  <flow name="get:\mtls\client-badssl:badssl-api-config">
+    <set-variable variableName="targetUrl" value="https://${badssl.client.host}${badssl.client.path}" />
+    <http:request method="GET" config-ref="client-badssl-mtls-request-config" path="${badssl.client.path}" />
+    <flow-ref name="build-badssl-response" />
   </flow>
 
-  <flow name="put:\todos\(todoId):application\json:todo-api-config">
-    <ee:transform doc:name="Return mock updated todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var nowTime = now()
----
-{
-  id: attributes.uriParams.todoId,
-  title: payload.title default "Mock todo",
-  description: payload.description default "Mocked updated todo",
-  status: payload.status default "pending",
-  dueDate: payload.dueDate default null,
-  createdAt: "2026-07-14T00:00:00Z",
-  updatedAt: nowTime
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
+  <flow name="get:\tls\self-signed-badssl:badssl-api-config">
+    <set-variable variableName="targetUrl" value="https://${badssl.selfSigned.host}${badssl.selfSigned.path}" />
+    <http:request method="GET" config-ref="self-signed-badssl-request-config" path="${badssl.selfSigned.path}" />
+    <flow-ref name="build-badssl-response" />
   </flow>
 
-  <flow name="delete:\todos\(todoId):todo-api-config">
-    <set-variable variableName="httpStatus" value="204" />
-    <set-payload value="" />
-  </flow>
-
-  <error-handler name="todo-api-error-handler">
+  <error-handler name="badssl-api-error-handler">
     <on-error-propagate type="APIKIT:BAD_REQUEST">
       <set-variable variableName="httpStatus" value="400" />
       <set-variable variableName="errorCode" value="BAD_REQUEST" />
@@ -164,8 +111,8 @@ var nowTime = now()
       <flow-ref name="build-error-response" />
     </on-error-propagate>
     <on-error-propagate type="ANY">
-      <set-variable variableName="httpStatus" value="500" />
-      <set-variable variableName="errorCode" value="INTERNAL_SERVER_ERROR" />
+      <set-variable variableName="httpStatus" value="502" />
+      <set-variable variableName="errorCode" value="BADSSL_UPSTREAM_ERROR" />
       <set-variable variableName="errorMessage" value="#[error.description]" />
       <flow-ref name="build-error-response" />
     </on-error-propagate>

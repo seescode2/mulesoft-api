@@ -5,3 +5,17 @@ http:
 api:
   manager:
     id: "${api.manager.id}"
+
+badssl:
+  client:
+    host: "client.badssl.com"
+    path: "/"
+    keystore:
+      path: "badssl-client.p12"
+      password: "badssl.com"
+  selfSigned:
+    host: "self-signed.badssl.com"
+    path: "/"
+    truststore:
+      path: "self-signed-badssl-truststore.jks"
+      password: "changeit"

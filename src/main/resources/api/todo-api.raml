@@ -1,43 +1,22 @@
 #%RAML 1.0
-title: Todo API
+title: BadSSL TLS API
 version: v1
 baseUri: /api/v1
 mediaType: application/json
 protocols: [ HTTP, HTTPS ]
 
 types:
-  TodoStatus:
-    type: string
-    enum: [pending, completed]
-  Todo:
+  BadSslResponse:
     type: object
     additionalProperties: false
     properties:
-      id: string
-      title: string
-      description?: string
-      status: TodoStatus
-      dueDate?: date-only
-      createdAt: datetime
-      updatedAt: datetime
-  TodoCreateRequest:
-    type: object
-    additionalProperties: false
-    properties:
-      title: string
-      description?: string
-      dueDate?: date-only
-  TodoUpdateRequest:
-    type: object
-    additionalProperties: false
-    minProperties: 1
-    properties:
-      title?: string
-      description?: string
-      status?: TodoStatus
-      dueDate?: date-only
+      target: string
+      status: integer
+      reasonPhrase?: string
+      body: string
   ErrorResponse:
     type: object
+    additionalProperties: false
     properties:
       error: string
       message: string
@@ -49,69 +28,36 @@ traits:
         type: string
         description: Optional caller supplied correlation id.
 
-/todos:
-  is: [hasCorrelationId]
-  get:
-    description: List todos. Optionally filter by status.
-    queryParameters:
-      status?: TodoStatus
-    responses:
-      200:
-        body:
-          application/json:
-            type: Todo[]
-            example: []
-  post:
-    description: Create a todo.
-    body:
-      application/json:
-        type: TodoCreateRequest
-        example:
-          title: Buy milk
-          description: Pick up whole milk
-          dueDate: 2026-07-15
-    responses:
-      201:
-        body:
-          application/json:
-            type: Todo
-      400:
-        body:
-          application/json:
-            type: ErrorResponse
-  /{todoId}:
-    uriParameters:
-      todoId: string
+/mtls:
+  /client-badssl:
+    is: [hasCorrelationId]
     get:
-      description: Retrieve a todo by id.
+      description: Calls https://client.badssl.com/ with the BadSSL client certificate configured for mutual TLS.
       responses:
         200:
           body:
             application/json:
-              type: Todo
-        404:
+              type: BadSslResponse
+              example:
+                target: https://client.badssl.com/
+                status: 200
+                reasonPhrase: OK
+                body: "client.badssl.com"
+        502:
           body:
             application/json:
               type: ErrorResponse
-    put:
-      description: Partially update a todo by id.
-      body:
-        application/json:
-          type: TodoUpdateRequest
+/tls:
+  /self-signed-badssl:
+    is: [hasCorrelationId]
+    get:
+      description: Calls https://self-signed.badssl.com/ using the configured truststore for that self-signed certificate.
       responses:
         200:
           body:
             application/json:
-              type: Todo
-        404:
-          body:
-            application/json:
-              type: ErrorResponse
-    delete:
-      description: Delete a todo by id.
-      responses:
-        204:
-        404:
+              type: BadSslResponse
+        502:
           body:
             application/json:
               type: ErrorResponse
