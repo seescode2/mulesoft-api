@@ -1,117 +1,125 @@
 #%RAML 1.0
-title: Todo API
+title: Object Store 2.0 Learning API
 version: v1
 baseUri: /api/v1
 mediaType: application/json
 protocols: [ HTTP, HTTPS ]
 
 types:
-  TodoStatus:
-    type: string
-    enum: [pending, completed]
-  Todo:
+  CacheEntry:
     type: object
     additionalProperties: false
     properties:
-      id: string
-      title: string
-      description?: string
-      status: TodoStatus
-      dueDate?: date-only
-      createdAt: datetime
-      updatedAt: datetime
-  TodoCreateRequest:
+      key:
+        type: string
+        minLength: 1
+      value: any
+    example:
+      key: greeting
+      value:
+        message: Hello from Object Store 2.0
+  CacheKeyResult:
     type: object
     additionalProperties: false
     properties:
-      title: string
-      description?: string
-      dueDate?: date-only
-  TodoUpdateRequest:
-    type: object
-    additionalProperties: false
-    minProperties: 1
-    properties:
-      title?: string
-      description?: string
-      status?: TodoStatus
-      dueDate?: date-only
+      key: string
+      exists: boolean
   ErrorResponse:
     type: object
+    additionalProperties: false
     properties:
       error: string
       message: string
 
-traits:
-  hasCorrelationId:
-    headers:
-      x-correlation-id?:
-        type: string
-        description: Optional caller supplied correlation id.
-
-/todos:
-  is: [hasCorrelationId]
-  get:
-    description: List todos. Optionally filter by status.
-    queryParameters:
-      status?: TodoStatus
-    responses:
-      200:
-        body:
-          application/json:
-            type: Todo[]
-            example: []
+/cache-value:
   post:
-    description: Create a todo.
+    description: Store a JSON value under a key using os:store.
     body:
       application/json:
-        type: TodoCreateRequest
-        example:
-          title: Buy milk
-          description: Pick up whole milk
-          dueDate: 2026-07-15
+        type: CacheEntry
     responses:
       201:
         body:
           application/json:
-            type: Todo
-      400:
+            example:
+              key: greeting
+              cached: true
+
+/list-cache-keys:
+  get:
+    description: List every key in the object store using os:retrieve-all-keys.
+    responses:
+      200:
+        body:
+          application/json:
+            type: string[]
+            example: [ greeting ]
+
+/check-cache-key/{key}:
+  uriParameters:
+    key:
+      type: string
+      minLength: 1
+  get:
+    description: Check whether a key exists using os:contains.
+    responses:
+      200:
+        body:
+          application/json:
+            type: CacheKeyResult
+            example:
+              key: greeting
+              exists: true
+
+/get-value/{key}:
+  uriParameters:
+    key:
+      type: string
+      minLength: 1
+  get:
+    description: Retrieve a cached value using os:retrieve. A missing key returns 404.
+    responses:
+      200:
+        body:
+          application/json:
+            type: any
+      404:
         body:
           application/json:
             type: ErrorResponse
-  /{todoId}:
-    uriParameters:
-      todoId: string
-    get:
-      description: Retrieve a todo by id.
-      responses:
-        200:
-          body:
-            application/json:
-              type: Todo
-        404:
-          body:
-            application/json:
-              type: ErrorResponse
-    put:
-      description: Partially update a todo by id.
-      body:
-        application/json:
-          type: TodoUpdateRequest
-      responses:
-        200:
-          body:
-            application/json:
-              type: Todo
-        404:
-          body:
-            application/json:
-              type: ErrorResponse
-    delete:
-      description: Delete a todo by id.
-      responses:
-        204:
-        404:
-          body:
-            application/json:
-              type: ErrorResponse
+
+/get-value-default/{key}:
+  uriParameters:
+    key:
+      type: string
+      minLength: 1
+  get:
+    description: Retrieve a value using os:retrieve and its os:default-value fallback.
+    queryParameters:
+      defaultValue:
+        type: string
+        required: false
+        default: Cache miss
+        description: Value returned when the key is not present.
+    responses:
+      200:
+        body:
+          application/json:
+            type: any
+
+/delete-value/{key}:
+  uriParameters:
+    key:
+      type: string
+      minLength: 1
+  delete:
+    description: Remove and return a cached value using os:remove. A missing key returns 404.
+    responses:
+      200:
+        body:
+          application/json:
+            type: any
+      404:
+        body:
+          application/json:
+            type: ErrorResponse

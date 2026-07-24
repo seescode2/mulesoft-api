@@ -1,4 +1,27 @@
-# MuleSoft Todo API
+# MuleSoft Object Store 2.0 API
+
+This learning API demonstrates the Object Store connector against one globally configured persistent store. On CloudHub, the persistent store is backed by Object Store v2.
+
+## Object Store operations
+
+All routes are below `/api/v1`:
+
+| Method | Route | Object Store operation |
+| --- | --- | --- |
+| `POST` | `/cache-value` | `os:store` |
+| `GET` | `/list-cache-keys` | `os:retrieve-all-keys` |
+| `GET` | `/check-cache-key/{key}` | `os:contains` |
+| `GET` | `/get-value/{key}` | `os:retrieve` |
+| `GET` | `/get-value-default/{key}?defaultValue=Cache%20miss` | `os:retrieve` with `os:default-value` |
+| `DELETE` | `/delete-value/{key}` | `os:remove` |
+
+Store a sample value with:
+
+```bash
+curl -X POST http://localhost:8081/api/v1/cache-value \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"greeting","value":{"message":"Hello from Object Store 2.0"}}'
+```
 
 This repository deploys the Mule application to Anypoint Runtime Manager when commits are pushed to a `release/*` branch. The deployment workflow is defined in [`.github/workflows/deploy-anypoint.yml`](.github/workflows/deploy-anypoint.yml).
 
@@ -57,10 +80,10 @@ The job:
 
 Before publishing another release, increment the Maven `<version>` in [`pom.xml`](pom.xml). Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
 
-The current live API path is:
+The API base path is:
 
 ```text
-/api/v1/todos
+/api/v1
 ```
 
 ## Update RAML workflow
