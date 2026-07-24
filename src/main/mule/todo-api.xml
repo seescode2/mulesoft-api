@@ -3,6 +3,7 @@
       xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:os="http://www.mulesoft.org/schema/mule/os"
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -11,20 +12,25 @@
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
         http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
         http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
-        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 
   <configuration-properties file="application.yaml" />
 
-  <http:listener-config name="todo-api-http-listener-config">
+  <http:listener-config name="object-store-api-http-listener-config">
     <http:listener-connection host="${http.host}" port="${http.port}" />
   </http:listener-config>
 
-  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
+  <!-- persistent=true uses Object Store v2 when this application runs in CloudHub. -->
+  <os:object-store name="persistent-object-store" persistent="true" />
 
-  <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="object-store-api-main" />
 
-  <flow name="todo-api-main">
-    <http:listener config-ref="todo-api-http-listener-config" path="/api/v1/*">
+  <apikit:config name="object-store-api-config" api="api/todo-api.raml"
+                  outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+
+  <flow name="object-store-api-main">
+    <http:listener config-ref="object-store-api-http-listener-config" path="/api/v1/*">
       <http:response statusCode="#[vars.httpStatus default 200]">
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:response>
@@ -33,8 +39,8 @@
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:error-response>
     </http:listener>
-    <apikit:router config-ref="todo-api-config" />
-    <error-handler ref="todo-api-error-handler" />
+    <apikit:router config-ref="object-store-api-config" />
+    <error-handler ref="object-store-api-error-handler" />
   </flow>
 
   <sub-flow name="build-error-response">
@@ -51,106 +57,55 @@ output application/json
     </ee:transform>
   </sub-flow>
 
-  <flow name="get:\todos:todo-api-config">
-    <ee:transform doc:name="Return mock todos">
+  <flow name="post:\cache-value:application\json:object-store-api-config">
+    <set-variable variableName="cacheKey" value="#[payload.key]" />
+    <set-variable variableName="cacheValue" value="#[payload.value]" />
+    <os:store key="#[vars.cacheKey]" objectStore="persistent-object-store" doc:name="Cache value">
+      <os:value>#[vars.cacheValue]</os:value>
+    </os:store>
+    <ee:transform doc:name="Confirm cached value">
       <ee:message>
         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var todos = [
-  {
-    id: "mock-todo-1",
-    title: "Review API requirements Madam",
-    description: "Mocked todo returned by the API",
-    status: "pending",
-    dueDate: "2026-07-15",
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  },
-  {
-    id: "mock-todo-2",
-    title: "Deploy Mule app",
-    description: "Second mocked todo returned by the API",
-    status: "completed",
-    dueDate: null,
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  }
-]
 ---
-if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status))
-  todos filter ($.status == attributes.queryParams.status)
-else
-  todos]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
-  </flow>
-
-  <flow name="post:\todos:application\json:todo-api-config">
-    <ee:transform doc:name="Return mock created todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var nowTime = now()
----
-{
-  id: "mock-created-todo",
-  title: payload.title default "Mock todo",
-  description: payload.description default null,
-  status: "pending",
-  dueDate: payload.dueDate default null,
-  createdAt: nowTime,
-  updatedAt: nowTime
-}]]></ee:set-payload>
+{ key: vars.cacheKey, cached: true }]]></ee:set-payload>
       </ee:message>
     </ee:transform>
     <set-variable variableName="httpStatus" value="201" />
   </flow>
 
-  <flow name="get:\todos\(todoId):todo-api-config">
-    <ee:transform doc:name="Return mock todo">
+  <flow name="get:\list-cache-keys:object-store-api-config">
+    <os:retrieve-all-keys objectStore="persistent-object-store" doc:name="List cache keys" />
+  </flow>
+
+  <flow name="get:\check-cache-key\(key):object-store-api-config">
+    <set-variable variableName="cacheKey" value="#[attributes.uriParams.key]" />
+    <os:contains key="#[vars.cacheKey]" objectStore="persistent-object-store" doc:name="Check cache key" />
+    <ee:transform doc:name="Describe key status">
       <ee:message>
         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{
-  id: attributes.uriParams.todoId,
-  title: "Mock todo",
-  description: "Mocked todo returned by id",
-  status: "pending",
-  dueDate: "2026-07-15",
-  createdAt: "2026-07-14T00:00:00Z",
-  updatedAt: "2026-07-14T00:00:00Z"
-}]]></ee:set-payload>
+{ key: vars.cacheKey, exists: payload }]]></ee:set-payload>
       </ee:message>
     </ee:transform>
   </flow>
 
-  <flow name="put:\todos\(todoId):application\json:todo-api-config">
-    <ee:transform doc:name="Return mock updated todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var nowTime = now()
----
-{
-  id: attributes.uriParams.todoId,
-  title: payload.title default "Mock todo",
-  description: payload.description default "Mocked updated todo",
-  status: payload.status default "pending",
-  dueDate: payload.dueDate default null,
-  createdAt: "2026-07-14T00:00:00Z",
-  updatedAt: nowTime
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
+  <flow name="get:\get-value\(key):object-store-api-config">
+    <os:retrieve key="#[attributes.uriParams.key]" objectStore="persistent-object-store" doc:name="Get value" />
   </flow>
 
-  <flow name="delete:\todos\(todoId):todo-api-config">
-    <set-variable variableName="httpStatus" value="204" />
-    <set-payload value="" />
+  <flow name="get:\get-value-default\(key):object-store-api-config">
+    <os:retrieve key="#[attributes.uriParams.key]" objectStore="persistent-object-store" doc:name="Get value or default">
+      <os:default-value>#[attributes.queryParams.defaultValue default "Cache miss"]</os:default-value>
+    </os:retrieve>
   </flow>
 
-  <error-handler name="todo-api-error-handler">
+  <flow name="delete:\delete-value\(key):object-store-api-config">
+    <os:remove key="#[attributes.uriParams.key]" objectStore="persistent-object-store" doc:name="Delete value" />
+  </flow>
+
+  <error-handler name="object-store-api-error-handler">
     <on-error-propagate type="APIKIT:BAD_REQUEST">
       <set-variable variableName="httpStatus" value="400" />
       <set-variable variableName="errorCode" value="BAD_REQUEST" />
@@ -161,6 +116,12 @@ var nowTime = now()
       <set-variable variableName="httpStatus" value="404" />
       <set-variable variableName="errorCode" value="NOT_FOUND" />
       <set-variable variableName="errorMessage" value="Resource not found" />
+      <flow-ref name="build-error-response" />
+    </on-error-propagate>
+    <on-error-propagate type="OS:KEY_NOT_FOUND">
+      <set-variable variableName="httpStatus" value="404" />
+      <set-variable variableName="errorCode" value="KEY_NOT_FOUND" />
+      <set-variable variableName="errorMessage" value="The requested cache key does not exist" />
       <flow-ref name="build-error-response" />
     </on-error-propagate>
     <on-error-propagate type="ANY">
