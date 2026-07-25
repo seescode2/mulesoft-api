@@ -54,7 +54,7 @@
     <choice>
       <when expression="#[vars.tokenIsCached]">
         <os:retrieve objectStore="oauth-client-token-cache" key="access-token" target="accessToken" />
-        <logger level="INFO" message="OAuth cache hit; reusing token ending in ...#[right(vars.accessToken, 8)], correlationId=#[correlationId]" />
+        <logger level="INFO" message="OAuth cache hit; reusing the cached token (value redacted), correlationId=#[correlationId]" />
       </when>
       <otherwise>
         <logger level="INFO" message="OAuth cache miss; manually calling POST /token, correlationId=#[correlationId]" />
@@ -66,14 +66,14 @@
         <os:store objectStore="oauth-client-token-cache" key="access-token">
           <os:value>#[vars.accessToken]</os:value>
         </os:store>
-        <logger level="INFO" message="Stored new OAuth token ending in ...#[right(vars.accessToken, 8)] in client cache for 30 seconds, correlationId=#[correlationId]" />
+        <logger level="INFO" message="Stored a new OAuth token (value redacted) in the client cache for 30 seconds, correlationId=#[correlationId]" />
       </otherwise>
     </choice>
     <set-payload value="#[vars.accessToken]" />
   </sub-flow>
 
   <sub-flow name="call-protected">
-    <logger level="INFO" message="Calling GET /protected with bearer token ending in ...#[right(vars.accessToken, 8)], correlationId=#[correlationId]" />
+    <logger level="INFO" message="Calling GET /protected with the bearer token (value redacted), correlationId=#[correlationId]" />
     <http:request config-ref="oauth-demo-request-config" method="GET" path="/api/v1/protected" target="protectedResponse" targetValue="#[{ payload: payload, attributes: attributes }]">
       <http:headers>#[{ Authorization: "Bearer " ++ vars.accessToken }]</http:headers>
       <http:response-validator><http:success-status-code-validator values="0..599" /></http:response-validator>
@@ -118,7 +118,7 @@
         <set-variable variableName="issuedToken" value="#[uuid()]" />
         <os:store objectStore="oauth-server-token-registry" key="#[vars.issuedToken]"><os:value>#[true]</os:value></os:store>
         <set-payload value='#[output application/json --- { access_token: vars.issuedToken, token_type: "Bearer", expires_in: 60 }]' />
-        <logger level="INFO" message="Issued server token ending in ...#[right(vars.issuedToken, 8)]; it is valid for 60 seconds and other issued tokens remain active, correlationId=#[correlationId]" />
+        <logger level="INFO" message="Issued a server token (value redacted); it is valid for 60 seconds and other issued tokens remain active, correlationId=#[correlationId]" />
       </otherwise>
     </choice>
   </flow>
@@ -126,12 +126,12 @@
   <flow name="get:\protected:oauth-demo-config">
     <set-variable variableName="authorization" value="#[attributes.headers.authorization default '']" />
     <set-variable variableName="presentedToken" value="#[if (vars.authorization startsWith 'Bearer ') vars.authorization substringAfter 'Bearer ' else '']" />
-    <logger level="INFO" message="Protected endpoint validating bearer token#[if (isEmpty(vars.presentedToken)) ' (missing)' else ' ending in ...' ++ right(vars.presentedToken, 8)], correlationId=#[correlationId]" />
+    <logger level="INFO" message="Protected endpoint validating bearer token (#[if (isEmpty(vars.presentedToken)) 'missing' else 'value redacted']), correlationId=#[correlationId]" />
     <os:contains objectStore="oauth-server-token-registry" key="#[vars.presentedToken]" target="tokenIsValid" />
     <choice>
       <when expression="#[vars.tokenIsValid]">
         <set-payload value='#[output application/json --- { message: "Access granted: the bearer token is active", token: vars.presentedToken }]' />
-        <logger level="INFO" message="Protected endpoint accepted token ending in ...#[right(vars.presentedToken, 8)], correlationId=#[correlationId]" />
+        <logger level="INFO" message="Protected endpoint accepted the bearer token (value redacted), correlationId=#[correlationId]" />
       </when>
       <otherwise>
         <set-variable variableName="httpStatus" value="401" />
