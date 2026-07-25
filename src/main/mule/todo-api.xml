@@ -3,28 +3,37 @@
       xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:os="http://www.mulesoft.org/schema/mule/os"
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
         http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
         http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
         http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 
   <configuration-properties file="application.yaml" />
 
-  <http:listener-config name="todo-api-http-listener-config">
+  <http:listener-config name="oauth-demo-listener-config">
     <http:listener-connection host="${http.host}" port="${http.port}" />
   </http:listener-config>
 
-  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
+  <http:request-config name="oauth-demo-request-config">
+    <http:request-connection host="${oauth.server.host}" port="${http.port}" protocol="HTTP" />
+  </http:request-config>
 
-  <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+  <!-- The client cache intentionally expires before the server token does. -->
+  <os:object-store name="oauth-client-token-cache" persistent="false" entryTtl="30" entryTtlUnit="SECONDS" />
+  <os:object-store name="oauth-server-token-registry" persistent="false" entryTtl="60" entryTtlUnit="SECONDS" />
 
-  <flow name="todo-api-main">
-    <http:listener config-ref="todo-api-http-listener-config" path="/api/v1/*">
+  <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="oauth-demo-main" />
+  <apikit:config name="oauth-demo-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+
+  <flow name="oauth-demo-main">
+    <http:listener config-ref="oauth-demo-listener-config" path="/api/v1/*">
       <http:response statusCode="#[vars.httpStatus default 200]">
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:response>
@@ -33,141 +42,121 @@
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:error-response>
     </http:listener>
-    <apikit:router config-ref="todo-api-config" />
-    <error-handler ref="todo-api-error-handler" />
+    <logger level="INFO" message='Inbound #[attributes.method] #[attributes.requestPath], correlationId=#[correlationId]' />
+    <apikit:router config-ref="oauth-demo-config" />
+    <logger level="INFO" message="Completed request with status #[vars.httpStatus default 200], correlationId=#[correlationId]" />
+    <error-handler ref="oauth-demo-error-handler" />
   </flow>
 
-  <sub-flow name="build-error-response">
-    <ee:transform doc:name="Build error response">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  error: vars.errorCode default "ERROR",
-  message: vars.errorMessage default "Unexpected error"
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
+  <sub-flow name="get-token">
+    <logger level="INFO" message="Checking the object store for cached OAuth client token, correlationId=#[correlationId]" />
+    <os:contains objectStore="oauth-client-token-cache" key="access-token" target="tokenIsCached" />
+    <choice>
+      <when expression="#[vars.tokenIsCached]">
+        <os:retrieve objectStore="oauth-client-token-cache" key="access-token" target="accessToken" />
+        <logger level="INFO" message="OAuth cache hit; reusing token ending in ...#[right(vars.accessToken, 8)], correlationId=#[correlationId]" />
+      </when>
+      <otherwise>
+        <logger level="INFO" message="OAuth cache miss; manually calling POST /token, correlationId=#[correlationId]" />
+        <http:request config-ref="oauth-demo-request-config" method="POST" path="/api/v1/token" target="tokenResponse" targetValue="#[payload]">
+          <http:body>#[output application/x-www-form-urlencoded --- { grant_type: "client_credentials", client_id: p("oauth.client.id"), client_secret: p("oauth.client.secret") }]</http:body>
+          <http:response-validator><http:success-status-code-validator values="200" /></http:response-validator>
+        </http:request>
+        <set-variable variableName="accessToken" value="#[vars.tokenResponse.access_token]" />
+        <os:store objectStore="oauth-client-token-cache" key="access-token">
+          <os:value>#[vars.accessToken]</os:value>
+        </os:store>
+        <logger level="INFO" message="Stored new OAuth token ending in ...#[right(vars.accessToken, 8)] in client cache for 30 seconds, correlationId=#[correlationId]" />
+      </otherwise>
+    </choice>
+    <set-payload value="#[vars.accessToken]" />
   </sub-flow>
 
-  <flow name="get:\todos:todo-api-config">
-    <ee:transform doc:name="Return mock todos">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var todos = [
-  {
-    id: "mock-todo-1",
-    title: "Review API requirements Madam",
-    description: "Mocked todo returned by the API",
-    status: "pending",
-    dueDate: "2026-07-15",
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  },
-  {
-    id: "mock-todo-2",
-    title: "Deploy Mule app",
-    description: "Second mocked todo returned by the API",
-    status: "completed",
-    dueDate: null,
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  }
-]
----
-if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status))
-  todos filter ($.status == attributes.queryParams.status)
-else
-  todos]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
+  <sub-flow name="call-protected">
+    <logger level="INFO" message="Calling GET /protected with bearer token ending in ...#[right(vars.accessToken, 8)], correlationId=#[correlationId]" />
+    <http:request config-ref="oauth-demo-request-config" method="GET" path="/api/v1/protected" target="protectedResponse" targetValue="#[{ payload: payload, attributes: attributes }]">
+      <http:headers>#[{ Authorization: "Bearer " ++ vars.accessToken }]</http:headers>
+      <http:response-validator><http:success-status-code-validator values="0..599" /></http:response-validator>
+    </http:request>
+    <logger level="INFO" message="Protected endpoint returned HTTP #[vars.protectedResponse.attributes.statusCode], correlationId=#[correlationId]" />
+  </sub-flow>
+
+  <flow name="get:\request:oauth-demo-config">
+    <logger level="INFO" message="Starting manual OAuth client request flow, correlationId=#[correlationId]" />
+    <flow-ref name="get-token" />
+    <flow-ref name="call-protected" />
+    <choice>
+      <when expression="#[vars.protectedResponse.attributes.statusCode == 401]">
+        <logger level="WARN" message="Protected endpoint rejected the cached token; evicting it and retrying once, correlationId=#[correlationId]" />
+        <os:remove objectStore="oauth-client-token-cache" key="access-token" />
+        <flow-ref name="get-token" />
+        <flow-ref name="call-protected" />
+      </when>
+      <otherwise>
+        <logger level="INFO" message="Protected call accepted the cached token; no retry is needed, correlationId=#[correlationId]" />
+      </otherwise>
+    </choice>
+    <set-payload value="#[vars.protectedResponse.payload]" />
+    <set-variable variableName="httpStatus" value="#[vars.protectedResponse.attributes.statusCode]" />
+    <logger level="INFO" message="Manual OAuth request flow finished with HTTP #[vars.httpStatus], correlationId=#[correlationId]" />
   </flow>
 
-  <flow name="post:\todos:application\json:todo-api-config">
-    <ee:transform doc:name="Return mock created todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var nowTime = now()
----
-{
-  id: "mock-created-todo",
-  title: payload.title default "Mock todo",
-  description: payload.description default null,
-  status: "pending",
-  dueDate: payload.dueDate default null,
-  createdAt: nowTime,
-  updatedAt: nowTime
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
-    <set-variable variableName="httpStatus" value="201" />
+  <flow name="post:\token:application\x-www-form-urlencoded:oauth-demo-config">
+    <logger level="INFO" message="Token endpoint received client_credentials request for client_id=#[payload.client_id default '(missing)'], correlationId=#[correlationId]" />
+    <choice>
+      <when expression='#[payload.grant_type != "client_credentials"]'>
+        <set-variable variableName="httpStatus" value="400" />
+        <set-payload value='#[output application/json --- { error: "unsupported_grant_type", message: "grant_type must be client_credentials" }]' />
+        <logger level="WARN" message="Token request rejected: unsupported grant type, correlationId=#[correlationId]" />
+      </when>
+      <when expression='#[payload.client_id != p("oauth.client.id") or payload.client_secret != p("oauth.client.secret")]'>
+        <set-variable variableName="httpStatus" value="401" />
+        <set-payload value='#[output application/json --- { error: "invalid_client", message: "Client credentials are invalid" }]' />
+        <logger level="WARN" message="Token request rejected: invalid credentials for client_id=#[payload.client_id default '(missing)'], correlationId=#[correlationId]" />
+      </when>
+      <otherwise>
+        <set-variable variableName="issuedToken" value="#[uuid()]" />
+        <os:store objectStore="oauth-server-token-registry" key="#[vars.issuedToken]"><os:value>#[true]</os:value></os:store>
+        <set-payload value='#[output application/json --- { access_token: vars.issuedToken, token_type: "Bearer", expires_in: 60 }]' />
+        <logger level="INFO" message="Issued server token ending in ...#[right(vars.issuedToken, 8)]; it is valid for 60 seconds and other issued tokens remain active, correlationId=#[correlationId]" />
+      </otherwise>
+    </choice>
   </flow>
 
-  <flow name="get:\todos\(todoId):todo-api-config">
-    <ee:transform doc:name="Return mock todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  id: attributes.uriParams.todoId,
-  title: "Mock todo",
-  description: "Mocked todo returned by id",
-  status: "pending",
-  dueDate: "2026-07-15",
-  createdAt: "2026-07-14T00:00:00Z",
-  updatedAt: "2026-07-14T00:00:00Z"
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
+  <flow name="get:\protected:oauth-demo-config">
+    <set-variable variableName="authorization" value="#[attributes.headers.authorization default '']" />
+    <set-variable variableName="presentedToken" value="#[if (vars.authorization startsWith 'Bearer ') vars.authorization substringAfter 'Bearer ' else '']" />
+    <logger level="INFO" message="Protected endpoint validating bearer token#[if (isEmpty(vars.presentedToken)) ' (missing)' else ' ending in ...' ++ right(vars.presentedToken, 8)], correlationId=#[correlationId]" />
+    <os:contains objectStore="oauth-server-token-registry" key="#[vars.presentedToken]" target="tokenIsValid" />
+    <choice>
+      <when expression="#[vars.tokenIsValid]">
+        <set-payload value='#[output application/json --- { message: "Access granted: the bearer token is active", token: vars.presentedToken }]' />
+        <logger level="INFO" message="Protected endpoint accepted token ending in ...#[right(vars.presentedToken, 8)], correlationId=#[correlationId]" />
+      </when>
+      <otherwise>
+        <set-variable variableName="httpStatus" value="401" />
+        <set-variable variableName="outboundHeaders" value='#[{ "WWW-Authenticate": "Bearer" }]' />
+        <set-payload value='#[output application/json --- { error: "invalid_token", message: "Bearer token is missing, unknown, or expired" }]' />
+        <logger level="WARN" message="Protected endpoint rejected bearer token, correlationId=#[correlationId]" />
+      </otherwise>
+    </choice>
   </flow>
 
-  <flow name="put:\todos\(todoId):application\json:todo-api-config">
-    <ee:transform doc:name="Return mock updated todo">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var nowTime = now()
----
-{
-  id: attributes.uriParams.todoId,
-  title: payload.title default "Mock todo",
-  description: payload.description default "Mocked updated todo",
-  status: payload.status default "pending",
-  dueDate: payload.dueDate default null,
-  createdAt: "2026-07-14T00:00:00Z",
-  updatedAt: nowTime
-}]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
-  </flow>
-
-  <flow name="delete:\todos\(todoId):todo-api-config">
-    <set-variable variableName="httpStatus" value="204" />
-    <set-payload value="" />
-  </flow>
-
-  <error-handler name="todo-api-error-handler">
+  <error-handler name="oauth-demo-error-handler">
     <on-error-propagate type="APIKIT:BAD_REQUEST">
       <set-variable variableName="httpStatus" value="400" />
-      <set-variable variableName="errorCode" value="BAD_REQUEST" />
-      <set-variable variableName="errorMessage" value="#[error.description]" />
-      <flow-ref name="build-error-response" />
+      <set-payload value='#[output application/json --- { error: "bad_request", message: error.description }]' />
+      <logger level="ERROR" message="Bad API request: #[error.description], correlationId=#[correlationId]" />
     </on-error-propagate>
     <on-error-propagate type="APIKIT:NOT_FOUND">
       <set-variable variableName="httpStatus" value="404" />
-      <set-variable variableName="errorCode" value="NOT_FOUND" />
-      <set-variable variableName="errorMessage" value="Resource not found" />
-      <flow-ref name="build-error-response" />
+      <set-payload value='#[output application/json --- { error: "not_found", message: "Resource not found" }]' />
+      <logger level="ERROR" message="API resource not found, correlationId=#[correlationId]" />
     </on-error-propagate>
     <on-error-propagate type="ANY">
       <set-variable variableName="httpStatus" value="500" />
-      <set-variable variableName="errorCode" value="INTERNAL_SERVER_ERROR" />
-      <set-variable variableName="errorMessage" value="#[error.description]" />
-      <flow-ref name="build-error-response" />
+      <set-payload value='#[output application/json --- { error: "internal_server_error", message: error.description }]' />
+      <logger level="ERROR" message="OAuth demo failed: #[error.description], correlationId=#[correlationId]" />
     </on-error-propagate>
   </error-handler>
 </mule>
