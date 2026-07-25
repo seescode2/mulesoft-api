@@ -74,7 +74,7 @@
 
   <sub-flow name="call-protected">
     <logger level="INFO" message="Calling GET /protected with the bearer token (value redacted), correlationId=#[correlationId]" />
-    <http:request config-ref="oauth-demo-request-config" method="GET" path="/api/v1/protected" target="protectedResponse" targetValue="#[{ payload: payload, attributes: attributes }]">
+    <http:request config-ref="oauth-demo-request-config" method="GET" path="/api/v1/protected" target="protectedResponse" targetValue="#[output application/java --- { payload: payload, attributes: attributes }]">
       <http:headers>#[{ Authorization: "Bearer " ++ vars.accessToken }]</http:headers>
       <http:response-validator><http:success-status-code-validator values="0..599" /></http:response-validator>
     </http:request>
