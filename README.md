@@ -1,4 +1,27 @@
-# MuleSoft Todo API
+# MuleSoft Manual OAuth Demo API
+
+This Mule application demonstrates the OAuth 2.0 client-credentials sequence without
+using the HTTP connector's built-in OAuth authentication element. It deliberately
+implements token acquisition, caching, eviction, retry, issuance, and validation as
+visible Mule flows so each step can be studied in the application logs.
+
+## Try the OAuth flow
+
+Run the application and call:
+
+```bash
+curl -i http://localhost:8081/api/v1/request
+```
+
+`GET /request` calls the `get-token` subflow. The first request obtains a token from
+`POST /token`, caches it for 30 seconds, and presents it to `GET /protected`. Further
+requests within 30 seconds reuse the cached token. Server-issued tokens remain active
+for 60 seconds, and multiple tokens may coexist. If `/protected` returns `401`, the
+request flow removes the rejected client token, obtains a fresh one, and retries once.
+
+The demo credentials are intentionally non-secret local learning values in
+`application.yaml`. In a real application, inject the client secret as a secure
+deployment property rather than committing it.
 
 This repository deploys the Mule application to Anypoint Runtime Manager when commits are pushed to a `release/*` branch. The deployment workflow is defined in [`.github/workflows/deploy-anypoint.yml`](.github/workflows/deploy-anypoint.yml).
 
@@ -57,10 +80,10 @@ The job:
 
 Before publishing another release, increment the Maven `<version>` in [`pom.xml`](pom.xml). Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
 
-The current live API path is:
+The main demonstration API path is:
 
 ```text
-/api/v1/todos
+/api/v1/request
 ```
 
 ## Update RAML workflow

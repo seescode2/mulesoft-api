@@ -2,6 +2,13 @@ http:
   host: "0.0.0.0"
   port: "8081"
 
+oauth:
+  server:
+    host: "localhost"
+  client:
+    id: "learning-client"
+    secret: "learning-secret"
+
 api:
   manager:
     id: "${api.manager.id}"
