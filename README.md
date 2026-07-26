@@ -23,21 +23,6 @@ The demo credentials are intentionally non-secret local learning values in
 `application.yaml`. In a real application, inject the client secret as a secure
 deployment property rather than committing it.
 
-## Tests
-
-The MUnit suite exercises both token issuance/validation and the complete `/request`
-flow. Run it from a development environment that has access to the Mule EE embedded
-runtime artifacts:
-
-```bash
-mvn test
-```
-
-The GitHub deployment build uses `-DskipMunitTests` because the connected-app
-credentials used to publish to Exchange do not grant Maven access to Mule EE's
-embedded test runtime. This skips only MUnit execution in the publishing job; it does
-not remove or disable the test suite for properly configured development environments.
-
 This repository deploys the Mule application to Anypoint Runtime Manager when commits are pushed to a `release/*` branch. The deployment workflow is defined in [`.github/workflows/deploy-anypoint.yml`](.github/workflows/deploy-anypoint.yml).
 
 Additionally this deploys RAML files to Exchange.  Edit the raml file in `src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  When commits are pushed to a `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.

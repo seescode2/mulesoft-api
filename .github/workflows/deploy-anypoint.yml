@@ -72,10 +72,7 @@ jobs:
 
       - name: Build and publish application to Exchange
         shell: bash
-        # MUnit's embedded Mule EE runtime is not available from the public Maven
-        # repositories used by this deployment job. Tests remain available through
-        # `mvn test` in an environment configured with MuleSoft enterprise artifacts.
-        run: mvn --batch-mode --no-transfer-progress -DskipMunitTests clean deploy
+        run: mvn --batch-mode --no-transfer-progress clean deploy
 
       - name: Deploy application to Runtime Manager
         shell: bash
