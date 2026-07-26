@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+      xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+
+  <munit:config name="todo-api-test-suite" />
+
+  <munit:test name="build-error-response-test"
+              description="The error response sub-flow returns the supplied error details">
+    <munit:execution>
+      <set-variable variableName="errorCode" value="TEST_ERROR" />
+      <set-variable variableName="errorMessage" value="Test error message" />
+      <flow-ref name="build-error-response" />
+    </munit:execution>
+    <munit:validation>
+      <munit-tools:assert-equals actual="#[payload.error]" expected="#[&quot;TEST_ERROR&quot;]" />
+      <munit-tools:assert-equals actual="#[payload.message]" expected="#[&quot;Test error message&quot;]" />
+    </munit:validation>
+  </munit:test>
+</mule>
