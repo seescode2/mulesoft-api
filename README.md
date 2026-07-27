@@ -63,6 +63,18 @@ The current live API path is:
 /api/v1/todos
 ```
 
+## Run MUnit tests locally
+
+The MUnit test suite requires Java 17. Run it through [mise](https://mise.jdx.dev/)
+to select the correct Java version:
+
+```bash
+mise exec java@17 -- mvn test
+```
+
+The release-branch deployment workflow runs the same command before it publishes
+or deploys the application.
+
 ## Update RAML workflow
 - Checkout `main` branch
 - Pull latest changes

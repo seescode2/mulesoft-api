@@ -20,12 +20,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Set up mise and Java
+        uses: jdx/mise-action@v3
         with:
-          distribution: temurin
-          java-version: '17'
-          cache: maven
+          tool_versions: |
+            java 17
+          cache: true
 
       - name: Configure Anypoint Exchange credentials
         uses: s4u/maven-settings-action@v3.1.0
@@ -69,6 +69,10 @@ jobs:
             --header "Authorization: bearer ${access_token}" \
             "https://anypoint.mulesoft.com/accounts/api/organizations/${ANYPOINT_BUSINESS_GROUP_ID}/environments" \
             > /dev/null
+
+      - name: Run MUnit tests
+        shell: bash
+        run: mise exec java@17 -- mvn test
 
       - name: Build and publish application to Exchange
         shell: bash
