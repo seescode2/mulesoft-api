@@ -12,15 +12,22 @@
   <name>mulesoft-todo-api</name>
 
   <properties>
-    <mule.maven.plugin.version>4.3.0</mule.maven.plugin.version>
-    <mule.runtime.version>4.9.9</mule.runtime.version>
-    <munit.version>3.1.0</munit.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <mule.maven.plugin.version>4.9.1</mule.maven.plugin.version>
+    <mule.runtime.version>4.11.0</mule.runtime.version>
+    <munit.version>3.7.0</munit.version>
     <app.runtime>${mule.runtime.version}</app.runtime>
     <api.manager.id>21030256</api.manager.id>
   </properties>
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>3.2.0</version>
+      </plugin>
       <plugin>
         <groupId>org.mule.tools.maven</groupId>
         <artifactId>mule-maven-plugin</artifactId>
@@ -57,6 +64,15 @@
         <artifactId>munit-maven-plugin</artifactId>
         <version>${munit.version}</version>
         <extensions>true</extensions>
+        <executions>
+          <execution>
+            <id>munit-tests</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -105,6 +121,13 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.mulesoft.mule.distributions</groupId>
+      <artifactId>mule-runtime-impl-no-services-bom</artifactId>
+      <version>${mule.runtime.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.mule.connectors</groupId>
       <artifactId>mule-http-connector</artifactId>
       <version>1.10.3</version>
@@ -115,6 +138,20 @@
       <artifactId>mule-apikit-module</artifactId>
       <version>1.11.2</version>
       <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>com.mulesoft.munit</groupId>
+      <artifactId>munit-runner</artifactId>
+      <version>${munit.version}</version>
+      <classifier>mule-plugin</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.mulesoft.munit</groupId>
+      <artifactId>munit-tools</artifactId>
+      <version>${munit.version}</version>
+      <classifier>mule-plugin</classifier>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>
