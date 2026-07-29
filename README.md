@@ -1,8 +1,8 @@
-# MuleSoft Todo API
+# MuleSoft Todo and Project API
 
 This repository deploys the Mule application to Anypoint Runtime Manager when commits are pushed to a `release/*` branch. The deployment workflow is defined in [`.github/workflows/deploy-anypoint.yml`](.github/workflows/deploy-anypoint.yml).
 
-Additionally this deploys RAML files to Exchange.  Edit the raml file in `src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  When commits are pushed to a `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.
+The API is defined with OpenAPI 3 in `src/main/resources/api/todo-api.yaml`. Commits pushed to an `oas/*.*.*` branch publish that contract to Exchange.
 
 ## Configure GitHub Actions secrets
 
@@ -57,10 +57,11 @@ The job:
 
 Before publishing another release, increment the Maven `<version>` in [`pom.xml`](pom.xml). Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
 
-The current live API path is:
+The current resource paths are:
 
 ```text
 /api/v1/todos
+/api/v1/projects
 ```
 
 ## Run MUnit tests locally
@@ -75,19 +76,19 @@ mise exec java@17 -- mvn test
 The release-branch deployment workflow runs the same command before it publishes
 or deploys the application.
 
-## Update RAML workflow
+## Update OAS workflow
 - Checkout `main` branch
 - Pull latest changes
 - Make new branch called `feature/something`.
-- Edit the raml file in `src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  
+- Edit the OAS file in `src/main/resources/api/todo-api.yaml`. Do not edit the name of the file.
 - Commit code
-- Make new branch called `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.  Check exchange to make sure this version does not already exist.
-- Push.  This should automatically cause github actions to push this to Exchange.
+- Make new branch called `oas/*.*.*` where * is a semantic version number it will deploy to Exchange.  Check exchange to make sure this version does not already exist.
+- Push.  This should automatically cause github actions to publish the OAS 3 contract to Exchange.
 
 ## Update Flows workflow
 - Checkout existing `feature/something`
 - Pull latest changes
-- Edit the flows.  
+- Edit the flows.
 - Make sure to increment the pom version.  Make sure this version does not already exist on Exchange.
 - Commit code
 - Make new branch called `release/*.*.*` where * is a semantic version number it will deploy to Exchange.

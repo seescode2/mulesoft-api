@@ -22,4 +22,32 @@
       <munit-tools:assert-equals actual="#[payload.message]" expected="#[&quot;Test error message&quot;]" />
     </munit:validation>
   </munit:test>
+
+  <munit:test name="create-project-flow-test"
+              description="The scaffolded project create flow returns a complete project and 201 status">
+    <munit:execution>
+      <set-payload value='#[{ name: "API launch", description: "Ship it", targetDate: "2026-08-15" }]' />
+      <flow-ref name="post:\projects:application\json:todo-api-config" />
+    </munit:execution>
+    <munit:validation>
+      <munit-tools:assert-equals actual="#[vars.httpStatus]" expected='#["201"]' />
+      <munit-tools:assert-equals actual="#[payload.name]" expected='#["API launch"]' />
+      <munit-tools:assert-equals actual="#[payload.status]" expected='#["planned"]' />
+      <munit-tools:assert-that expression="#[payload.id]" is='#[MunitTools::notNullValue()]' />
+    </munit:validation>
+  </munit:test>
+
+  <munit:test name="create-todo-flow-test"
+              description="The scaffolded todo create flow returns a complete todo and 201 status">
+    <munit:execution>
+      <set-payload value='#[{ title: "Document OAS", projectId: "project-1" }]' />
+      <flow-ref name="post:\todos:application\json:todo-api-config" />
+    </munit:execution>
+    <munit:validation>
+      <munit-tools:assert-equals actual="#[vars.httpStatus]" expected='#["201"]' />
+      <munit-tools:assert-equals actual="#[payload.title]" expected='#["Document OAS"]' />
+      <munit-tools:assert-equals actual="#[payload.projectId]" expected='#["project-1"]' />
+      <munit-tools:assert-that expression="#[payload.id]" is='#[MunitTools::notNullValue()]' />
+    </munit:validation>
+  </munit:test>
 </mule>

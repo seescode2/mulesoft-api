@@ -21,7 +21,7 @@
 
   <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
 
-  <apikit:config name="todo-api-config" api="api/todo-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+  <apikit:config name="todo-api-config" api="api/todo-api.yaml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
 
   <flow name="todo-api-main">
     <http:listener config-ref="todo-api-http-listener-config" path="/api/v1/*">
@@ -93,11 +93,12 @@ output application/json
 var nowTime = now()
 ---
 {
-  id: "mock-created-todo",
+  id: "todo-" ++ (uuid()),
   title: payload.title default "Mock todo",
   description: payload.description default null,
   status: "pending",
   dueDate: payload.dueDate default null,
+  projectId: payload.projectId default null,
   createdAt: nowTime,
   updatedAt: nowTime
 }]]></ee:set-payload>
@@ -118,6 +119,7 @@ output application/json
   description: "Mocked todo returned by id",
   status: "pending",
   dueDate: "2026-07-15",
+  projectId: null,
   createdAt: "2026-07-14T00:00:00Z",
   updatedAt: "2026-07-14T00:00:00Z"
 }]]></ee:set-payload>
@@ -138,6 +140,7 @@ var nowTime = now()
   description: payload.description default "Mocked updated todo",
   status: payload.status default "pending",
   dueDate: payload.dueDate default null,
+  projectId: payload.projectId default null,
   createdAt: "2026-07-14T00:00:00Z",
   updatedAt: nowTime
 }]]></ee:set-payload>
@@ -146,6 +149,53 @@ var nowTime = now()
   </flow>
 
   <flow name="delete:\todos\(todoId):todo-api-config">
+    <set-variable variableName="httpStatus" value="204" />
+    <set-payload value="" />
+  </flow>
+
+  <flow name="get:\projects:todo-api-config">
+    <ee:transform doc:name="Return projects">
+      <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var projects = [
+  { id: "project-1", name: "API launch", description: "Ship the planning API", status: "active", targetDate: "2026-08-15", createdAt: "2026-07-14T00:00:00Z", updatedAt: "2026-07-14T00:00:00Z" },
+  { id: "project-2", name: "Documentation", description: "Publish client guides", status: "planned", targetDate: null, createdAt: "2026-07-14T00:00:00Z", updatedAt: "2026-07-14T00:00:00Z" }
+]
+---
+if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status)) projects filter ($.status == attributes.queryParams.status) else projects]]></ee:set-payload></ee:message>
+    </ee:transform>
+  </flow>
+
+  <flow name="post:\projects:application\json:todo-api-config">
+    <ee:transform doc:name="Create project response">
+      <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var timestamp = now()
+---
+{ id: "project-" ++ (uuid()), name: payload.name, description: payload.description default null, status: "planned", targetDate: payload.targetDate default null, createdAt: timestamp, updatedAt: timestamp }]]></ee:set-payload></ee:message>
+    </ee:transform>
+    <set-variable variableName="httpStatus" value="201" />
+  </flow>
+
+  <flow name="get:\projects\(projectId):todo-api-config">
+    <ee:transform doc:name="Get project response">
+      <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ id: attributes.uriParams.projectId, name: "API launch", description: "Project returned by id", status: "active", targetDate: "2026-08-15", createdAt: "2026-07-14T00:00:00Z", updatedAt: "2026-07-14T00:00:00Z" }]]></ee:set-payload></ee:message>
+    </ee:transform>
+  </flow>
+
+  <flow name="put:\projects\(projectId):application\json:todo-api-config">
+    <ee:transform doc:name="Update project response">
+      <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ id: attributes.uriParams.projectId, name: payload.name default "API launch", description: payload.description default null, status: payload.status default "active", targetDate: payload.targetDate default null, createdAt: "2026-07-14T00:00:00Z", updatedAt: now() }]]></ee:set-payload></ee:message>
+    </ee:transform>
+  </flow>
+
+  <flow name="delete:\projects\(projectId):todo-api-config">
     <set-variable variableName="httpStatus" value="204" />
     <set-payload value="" />
   </flow>
