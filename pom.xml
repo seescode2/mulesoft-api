@@ -56,6 +56,13 @@
             <secureProperties>
               <anypoint.platform.client_secret>${anypoint.platform.client.secret}</anypoint.platform.client_secret>
             </secureProperties>
+            <integrations>
+              <services>
+                <objectStoreV2>
+                  <enabled>true</enabled>
+                </objectStoreV2>
+              </services>
+            </integrations>
           </cloudhub2Deployment>
         </configuration>
       </plugin>
@@ -137,6 +144,12 @@
       <groupId>org.mule.modules</groupId>
       <artifactId>mule-apikit-module</artifactId>
       <version>1.11.2</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-objectstore-connector</artifactId>
+      <version>1.3.0</version>
       <classifier>mule-plugin</classifier>
     </dependency>
     <dependency>
