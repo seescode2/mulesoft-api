@@ -6,6 +6,16 @@ A browser-only planning workspace for tracking MuleSoft flow licenses, API Manag
 
 Open `index.html` directly in a current desktop browser. No installation, server, network connection, build command, or dependency is required. Use **Load sample data** on the Import / Export screen for the documented 2027 planning scenario.
 
+## Guided labs
+
+The labs use a separate, cumulative Northstar Outfitters scenario. Start with a clean browser workspace in Lab 1, then complete the labs in order because each one builds on the data from the previous lab.
+
+1. [Lab 1 — Plan the Digital Checkout project](lab1.md)
+2. [Lab 2 — Add the Store Fulfillment project](lab2.md)
+3. [Lab 3 — Find and respond to a project overrun](lab3.md)
+4. [Lab 4 — Add future capacity and compare forecast modes](lab4.md)
+5. [Lab 5 — Record go-live and export the plan](lab5.md)
+
 ## Technical design
 
 The application uses semantic HTML, responsive CSS, and plain JavaScript. There are no frameworks, external fonts, libraries, CDNs, backend services, or databases. Data is normalized around stable generated IDs and stored under the localStorage key `mulesoft-cost-estimator-data`. A schema version and application timestamps are included. Storage reads and writes are centralized in `js/storage.js`; corrupt stored JSON is reported rather than silently discarded.
@@ -21,7 +31,7 @@ The application uses semantic HTML, responsive CSS, and plain JavaScript. There 
 - `js/sample-data.js` — optional, clearly identified 2027 scenario.
 - `js/ui.js` — screen and table rendering.
 - `js/app.js` — navigation, forms, CRUD, archive, allocation, import/export, and event handling.
-- `tests.html` / `js/tests.js` — dependency-free calculation test harness.
+- `tests.html` / `js/tests.js` — dependency-free storage, timeline, and calculation test harness.
 
 ## Counting rules
 
