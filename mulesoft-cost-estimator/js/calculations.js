@@ -95,12 +95,11 @@
     });
     return { reservation, assigned, demand, unassigned, overrun, classified };
   }
-  function organization(data, month, mode) {
+  function organization(data, month) {
     const out = {},
       rawApi = emptyDemand(),
       reservedProjects = { flow: 0, apiPre: 0, apiProd: 0 },
-      allocated = { flow: 0, apiPre: 0, apiProd: 0 },
-      unplanned = { flow: 0, apiPre: 0, apiProd: 0 };
+      allocated = { flow: 0, apiPre: 0, apiProd: 0 };
     data.apis.forEach((api) => {
       const d = apiDemand(api, month);
       ["flow", "apiPre", "apiProd"].forEach((p) => {
@@ -121,8 +120,7 @@
       });
     });
     Object.keys(POOLS).forEach((pool) => {
-      let owned = 0,
-        uncertain = 0;
+      let purchased = 0;
       data.capacityEntries
         .filter(
           (c) =>
@@ -131,16 +129,9 @@
             c.status !== "cancelled",
         )
         .forEach((c) => {
-          if (c.status === "planned") uncertain += c.quantity;
-          if (c.status !== "planned" || mode === "planning")
-            owned += c.quantity;
+          if (["active", "ordered"].includes(c.status))
+            purchased += c.quantity;
         });
-      const reserve =
-        Number(Timelines.effective(data.strategicReserves[pool], month, 0)) ||
-        0;
-      const apiTotal = rawApi[pool].used + rawApi[pool].reserved;
-      const independent = Math.max(0, apiTotal - allocated[pool]);
-      unplanned[pool] = independent;
       const reserved =
         Math.max(
           0,
@@ -148,22 +139,18 @@
         ) + Math.max(0, rawApi[pool].reserved - allocated[pool]);
       const used = rawApi[pool].used;
       const totalDemand = used + reserved;
-      const free = owned - totalDemand - reserve;
+      const extra = purchased - totalDemand;
       out[pool] = {
-        owned,
-        uncertain,
+        purchased,
         used,
         reserved,
-        reserve,
-        free,
-        shortfall: Math.max(0, -free),
+        extra,
+        shortfall: Math.max(0, -extra),
         totalDemand,
         allocated: allocated[pool],
-        unplanned: independent,
       };
     });
     out.byEnv = rawApi.byEnv;
-    out.unplanned = unplanned;
     return out;
   }
   function futureCapacity(data, month) {

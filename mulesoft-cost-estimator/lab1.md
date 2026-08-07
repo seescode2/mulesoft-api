@@ -6,7 +6,7 @@ Northstar Outfitters is a regional outdoor retailer whose online checkout still 
 
 The company has approved a **Digital Checkout** project. Its first MuleSoft API, **Checkout Experience API**, will validate checkout requests now and later support web and mobile channels. Development begins in January 2027. The team expects one DEV replica, two TEST replicas, and three PROD replicas. DEV work has started; TEST and PROD capacity is reserved for later phases.
 
-In this lab you will start with a clean workspace, record the organization's existing licenses and strategic reserve, create one learner project, add its first API; its reservation is applied automatically to that API.
+In this lab you will start with a clean workspace, record the organization's purchased licenses, create one learner project, and add its first API; its reservation is applied automatically to that API.
 
 > The planner always retains its protected **Shared Platform / Unassigned** project. “One project” in this lab means one project created by you.
 
@@ -24,10 +24,10 @@ Create the January 2027 plan for Digital Checkout and confirm that the API's dem
 
 Do not click **Load sample data**; these labs create their own scenario.
 
-## 2. Record the licenses Northstar already owns
+## 2. Record the licenses Northstar already purchased
 
-1. In the left navigation, click **License Capacity**.
-2. Click **+ Add capacity**.
+1. In the left navigation, click **Purchased Capacity**.
+2. Click **+ Add purchase**.
 3. Enter:
    - **License pool:** Flow licenses
    - **Quantity:** `30`
@@ -35,14 +35,14 @@ Do not click **Load sample data**; these labs create their own scenario.
    - **Status:** active
    - **Description or notes:** `Northstar base subscription`
 4. Click **Save changes**.
-5. Click **+ Add capacity** again and enter:
+5. Click **+ Add purchase** again and enter:
    - **License pool:** API Manager pre-production
    - **Quantity:** `8`
    - **Effective month:** January 2027
    - **Status:** active
    - **Description or notes:** `DEV and TEST entitlement`
 6. Click **Save changes**.
-7. Click **+ Add capacity** once more and enter:
+7. Click **+ Add purchase** once more and enter:
    - **License pool:** API Manager production
    - **Quantity:** `4`
    - **Effective month:** January 2027
@@ -50,20 +50,7 @@ Do not click **Load sample data**; these labs create their own scenario.
    - **Description or notes:** `Production entitlement`
 8. Click **Save changes**.
 
-## 3. Protect a strategic reserve
-
-Northstar's architecture team keeps capacity aside for incidents and small unplanned integrations.
-
-1. In the left navigation, click **Strategic Reserve**.
-2. Click **Change reserve**.
-3. Set **Effective month** to January 2027.
-4. Enter:
-   - **Flow licenses:** `4`
-   - **API Manager pre-production:** `1`
-   - **API Manager production:** `1`
-5. Click **Save changes**.
-
-## 4. Create the Digital Checkout project
+## 3. Create the Digital Checkout project
 
 1. In the left navigation, click **Projects**.
 2. Click **+ Add project**.
@@ -80,7 +67,7 @@ Northstar's architecture team keeps capacity aside for incidents and small unpla
 
 The Projects table should show Digital Checkout with 14 reserved flows and no covered flows yet.
 
-## 5. Add the Checkout Experience API
+## 4. Add the Checkout Experience API
 
 1. In the left navigation, click **APIs**.
 2. Click **+ Add API**.
@@ -110,7 +97,7 @@ The Projects table should show Digital Checkout with 14 reserved flows and no co
 
 The API uses 2 DEV flows and reserves 10 more: `(2 × 2 TEST replicas) + (2 × 3 PROD replicas)`. It also needs two pre-production API Manager licenses and one production license.
 
-## 6. Verify automatic coverage
+## 5. Verify automatic coverage
 
 1. Return to **Projects**.
 2. Confirm that the API demand is covered automatically from Digital Checkout’s reservation. No separate action is required.

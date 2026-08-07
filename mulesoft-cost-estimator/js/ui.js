@@ -25,20 +25,19 @@
   function poolCard(key, v) {
     const state = v.shortfall
         ? "danger"
-        : v.owned && v.free < Math.max(1, v.owned * 0.15)
+        : v.purchased && v.extra < Math.max(1, v.purchased * 0.15)
           ? "warning"
           : "",
-      pct = v.owned
-        ? Math.min(100, ((v.used + v.reserved + v.reserve) / v.owned) * 100)
+      usedPct = v.purchased
+        ? Math.min(100, (v.used / v.purchased) * 100)
+        : 0,
+      reservedPct = v.purchased
+        ? Math.min(100 - usedPct, (v.reserved / v.purchased) * 100)
         : 0;
-    return `<article class="pool-card ${state}"><div class="pool-head"><h2>${Calc.POOLS[key]}</h2>${badge(v.shortfall ? `⚠ Shortfall ${n(v.shortfall)}` : state ? "△ Near limit" : "✓ Healthy", v.shortfall ? "bad" : state ? "warn" : "good")}</div><div class="big-number">${n(v.free)} <small>freely available</small></div><div class="meter" title="${Math.round(pct)}% committed"><span style="width:${pct}%"></span></div><div class="pool-stats"><div><span>Owned</span><strong>${n(v.owned)}</strong></div><div><span>Used</span><strong>${n(v.used)}</strong></div><div><span>Reserved</span><strong>${n(v.reserved)}</strong></div><div><span>Strategic</span><strong>${n(v.reserve)}</strong></div><div><span>Unplanned</span><strong>${n(v.unplanned)}</strong></div><div><span>Uncertain</span><strong>${n(v.uncertain)}</strong></div></div></article>`;
+    return `<article class="pool-card ${state}"><div class="pool-head"><h2>${Calc.POOLS[key]}</h2>${badge(v.shortfall ? `⚠ Exceeded by ${n(v.shortfall)}` : state ? "△ Near limit" : "✓ Healthy", v.shortfall ? "bad" : state ? "warn" : "good")}</div><div class="big-number">${n(v.purchased)} <small>purchased</small></div><div class="meter purchased-meter" title="Purchased capacity contains used, reserved, and extra"><span class="used" style="width:${usedPct}%"></span><span class="reserved" style="width:${reservedPct}%"></span></div><div class="capacity-equation">Purchased = Used + Reserved + Extra</div><div class="pool-stats"><div><span>Used</span><strong>${n(v.used)}</strong></div><div><span>Reserved</span><strong>${n(v.reserved)}</strong></div><div><span>Extra</span><strong class="${v.extra < 0 ? "negative" : ""}">${n(v.extra)}</strong></div></div></article>`;
   }
-  function capacityGlossary(mode) {
-    const uncertainTreatment =
-      mode === "planning"
-        ? "Included in Owned in this planning view, but still identified as provisional."
-        : "Shown for awareness, but not included in Owned in this committed view.";
-    return `<section class="panel capacity-glossary" aria-labelledby="capacity-terms-heading"><h2 id="capacity-terms-heading">What the capacity numbers mean</h2><p class="panel-sub">Each value applies to the selected month and is calculated separately for each capacity pool.</p><dl><div><dt>Owned</dt><dd>Capacity available to the organization from active or ordered entries.</dd></div><div><dt>Used</dt><dd>Capacity currently assigned to API environments marked used.</dd></div><div><dt>Reserved</dt><dd>Capacity held for projects or API environments but not yet in use.</dd></div><div><dt>Strategic</dt><dd>A protected organization buffer that cannot be assigned or consumed automatically.</dd></div><div><dt>Unplanned</dt><dd>Used or reserved API demand not covered by its owning project's reservation. It is already included in demand, so do not subtract it again.</dd></div><div><dt>Uncertain</dt><dd>Planned capacity effective by this month that is not yet active or ordered. ${uncertainTreatment}</dd></div></dl><p class="capacity-formula"><strong>Freely available</strong> = Owned − Used − Reserved − Strategic</p></section>`;
+  function capacityGlossary() {
+    return `<section class="panel capacity-glossary" aria-labelledby="capacity-terms-heading"><h2 id="capacity-terms-heading">How purchased capacity is divided</h2><p class="panel-sub">Each value applies to the selected month and is calculated separately for each capacity pool.</p><dl><div><dt>Purchased</dt><dd>The active or ordered capacity bought by the organization.</dd></div><div><dt>Used</dt><dd>Purchased capacity currently consumed by API environments marked used.</dd></div><div><dt>Reserved</dt><dd>Purchased capacity held for projects or API environments but not yet in use.</dd></div><div><dt>Extra</dt><dd>What remains after used and reserved capacity. A negative value means demand exceeds what was purchased.</dd></div></dl><p class="capacity-formula"><strong>Purchased</strong> = Used + Reserved + Extra</p></section>`;
   }
   function dashboard(data, state) {
     const o = Calc.organization(data, state.month, state.mode),
@@ -58,10 +57,6 @@
     Object.keys(Calc.POOLS).forEach((p) => {
       if (o[p].shortfall)
         warns.push(`${Calc.POOLS[p]} exceed capacity by ${n(o[p].shortfall)}.`);
-      else if (o[p].free < 0 + o[p].reserve && o[p].unplanned)
-        warns.push(
-          `Unplanned demand is drawing close to the ${n(o[p].reserve)} ${Calc.POOLS[p].toLowerCase()} strategic reserve.`,
-        );
     });
     data.projects.forEach((p) => {
       const s = Calc.projectStats(data, p, state.month);
@@ -78,13 +73,13 @@
       head(
         "Monthly command center",
         Timelines.label(state.month),
-        `A ${state.mode} view of owned capacity, protected reserve, and delivery demand.`,
+        "Purchased capacity and delivery demand for the selected month.",
       ) +
       `<div class="metric-grid">${Object.keys(Calc.POOLS)
         .map((p) => poolCard(p, o[p]))
         .join(
           "",
-        )}</div>${capacityGlossary(state.mode)}<div class="dashboard-grid"><div><section class="panel"><h2>Flow demand by environment</h2><p class="panel-sub">Used and reserved flow licenses; replicas are included.</p>${[
+        )}</div>${capacityGlossary()}<div class="dashboard-grid"><div><section class="panel"><h2>Flow demand by environment</h2><p class="panel-sub">Used and reserved flow licenses; replicas are included.</p>${[
         "dev",
         "test",
         "prod",
@@ -110,7 +105,7 @@
     const projects = data.projects
       .map((p) => `<option value="${p.id}">${esc(p.name)}</option>`)
       .join("");
-    return `<div class="toolbar"><input type="search" data-filter="search" placeholder="Search ${kind} by name…" value="${esc(state.filters.search || "")}">${kind === "APIs" ? `<select data-filter="owner"><option value="">All owning projects</option>${projects}</select><select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "in-development", "operational", "on-hold", "archived"].map((x) => `<option>${x}</option>`).join("")}</select><select data-filter="demand"><option value="">Reserved and used</option><option value="used">Used</option><option value="reserved">Reserved</option><option value="override">With overrides</option><option value="unplanned">Unplanned demand</option></select>` : `<select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "active", "on-hold", "archived"].map((x) => `<option>${x}</option>`).join("")}</select>`}</div>`;
+    return `<div class="toolbar"><input type="search" data-filter="search" placeholder="Search ${kind} by name…" value="${esc(state.filters.search || "")}">${kind === "APIs" ? `<select data-filter="owner"><option value="">All owning projects</option>${projects}</select><select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "in-development", "operational", "on-hold", "archived"].map((x) => `<option>${x}</option>`).join("")}</select><select data-filter="demand"><option value="">Reserved and used</option><option value="used">Used</option><option value="reserved">Reserved</option><option value="override">With overrides</option></select>` : `<select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "active", "on-hold", "archived"].map((x) => `<option>${x}</option>`).join("")}</select>`}</div>`;
   }
   function apis(data, state) {
     let rows = data.apis.filter((a) => {
@@ -149,7 +144,7 @@
         `<button class="primary-button" data-action="add-api">+ Add API</button>`,
       ) +
       filters("APIs", data, state) +
-      `<div class="table-wrap"><table><thead><tr><th>API</th><th>Owning project</th><th>Lifecycle</th><th>DEV</th><th>TEST</th><th>PROD</th><th>Used flows</th><th>Reserved flows</th><th>API Manager pre/prod</th><th>Consumers</th><th>Warnings</th><th></th></tr></thead><tbody>${
+      `<div class="table-wrap"><table><thead><tr><th>API</th><th>Owning project</th><th>Lifecycle</th><th>DEV</th><th>TEST</th><th>PROD</th><th>Used flows</th><th>Reserved flows</th><th>API Manager pre/prod</th><th>Consumers</th><th></th></tr></thead><tbody>${
         rows
           .map((a) => {
             const d = Calc.apiDemand(a, state.month),
@@ -157,13 +152,11 @@
                 Timelines.effective(a.environments[e], state.month, {
                   flowState: "inactive",
                   apiState: "not-managed",
-                }),
-              alloc = Calc.allocation(a, state.month),
-              unplanned = d.totalFlows > alloc.flow;
-            return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${esc(project(Calc.owner(a, state.month)))}</td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${env(e).flowState}">${title(env(e).flowState)}</span><br><span class="subtle">AM: ${title(env(e).apiState)}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td>${a.consumers.filter((c) => c.startMonth <= state.month && (!c.endMonth || c.endMonth >= state.month)).length}</td><td>${unplanned ? badge("△ Unplanned", "warn") : badge("✓", "good")}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${a.id}">Edit</button><button data-action="archive-api" data-id="${a.id}">${Calc.lifecycle(a, state.month) === "archived" ? "Restore" : "Archive"}</button><button data-action="delete-api" data-id="${a.id}">Delete</button></div></td></tr>`;
+                });
+            return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${esc(project(Calc.owner(a, state.month)))}</td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${env(e).flowState}">${title(env(e).flowState)}</span><br><span class="subtle">AM: ${title(env(e).apiState)}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td>${a.consumers.filter((c) => c.startMonth <= state.month && (!c.endMonth || c.endMonth >= state.month)).length}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${a.id}">Edit</button><button data-action="archive-api" data-id="${a.id}">${Calc.lifecycle(a, state.month) === "archived" ? "Restore" : "Archive"}</button><button data-action="delete-api" data-id="${a.id}">Delete</button></div></td></tr>`;
           })
           .join("") ||
-        `<tr><td colspan="12"><div class="empty">No APIs match these filters.</div></td></tr>`
+        `<tr><td colspan="11"><div class="empty">No APIs match these filters.</div></td></tr>`
       }</tbody></table></div>`
     );
   }
@@ -211,11 +204,11 @@
     return (
       head(
         "Organization supply",
-        "License Capacity",
-        "Capacity is independent from project and API demand.",
-        `<button class="primary-button" data-action="add-capacity">+ Add capacity</button>`,
+        "Purchased Capacity",
+        "Record capacity purchases independently from project and API demand.",
+        `<button class="primary-button" data-action="add-capacity">+ Add purchase</button>`,
       ) +
-      `<div class="table-wrap"><table><thead><tr><th>License pool</th><th>Quantity</th><th>Effective month</th><th>Status</th><th>Description</th><th>Included</th><th></th></tr></thead><tbody>${
+      `<div class="table-wrap"><table><thead><tr><th>License pool</th><th>Quantity</th><th>Effective month</th><th>Status</th><th>Description</th><th>Counts as purchased</th><th></th></tr></thead><tbody>${
         data.capacityEntries
           .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth))
           .map(
@@ -225,46 +218,6 @@
           .join("") ||
         `<tr><td colspan="7"><div class="empty">No capacity entries yet.</div></td></tr>`
       }</tbody></table></div>`
-    );
-  }
-  function reserve(data, state) {
-    const o = Calc.organization(data, state.month, state.mode);
-    return (
-      head(
-        "Protected supply",
-        "Strategic Reserve",
-        "Reserve is effective-dated, never consumed automatically, and released only by an explicit change.",
-        `<button class="primary-button" data-action="edit-reserve">Change reserve</button>`,
-      ) +
-      `<div class="metric-grid">${Object.keys(Calc.POOLS)
-        .map((p) => poolCard(p, o[p]))
-        .join(
-          "",
-        )}</div><section class="panel" style="margin-top:16px"><h2>Reserve history</h2><p class="panel-sub">All recorded effective-dated changes remain visible.</p><div class="table-wrap"><table><thead><tr><th>Effective month</th>${Object.values(
-        Calc.POOLS,
-      )
-        .map((x) => `<th>${x}</th>`)
-        .join("")}</tr></thead><tbody>${
-        [
-          ...new Set(
-            Object.values(data.strategicReserves)
-              .flat()
-              .map((x) => x.effectiveMonth),
-          ),
-        ]
-          .sort()
-          .map(
-            (month) =>
-              `<tr><td>${Timelines.label(month)}</td>${Object.keys(Calc.POOLS)
-                .map(
-                  (p) =>
-                    `<td>${n(Timelines.effective(data.strategicReserves[p], month, 0))}</td>`,
-                )
-                .join("")}</tr>`,
-          )
-          .join("") ||
-        '<tr><td colspan="4"><div class="empty">No reserve has been set.</div></td></tr>'
-      }</tbody></table></div></section>`
     );
   }
   function forecast(data, state) {
@@ -282,7 +235,7 @@
       )
         .map(
           (x) =>
-            `<th>${x}<br><span class="subtle">owned / demand / free</span></th>`,
+            `<th>${x}<br><span class="subtle">purchased / used / reserved / extra</span></th>`,
         )
         .join("")}<th>Status</th></tr></thead><tbody>${months
         .map((m) => {
@@ -293,7 +246,7 @@
           return `<tr><td>${Timelines.label(m)}</td>${Object.keys(Calc.POOLS)
             .map(
               (p) =>
-                `<td>${n(o[p].owned)} / ${n(o[p].used + o[p].reserved)} / <strong>${n(o[p].free)}</strong></td>`,
+                `<td>${n(o[p].purchased)} / ${n(o[p].used)} / ${n(o[p].reserved)} / <strong class="${o[p].extra < 0 ? "negative" : ""}">${n(o[p].extra)}</strong></td>`,
             )
             .join(
               "",
@@ -309,7 +262,7 @@
         "Import / Export",
         "Your complete normalized dataset remains under your control.",
       ) +
-      `<div class="data-actions"><article class="action-tile"><h3>Export complete dataset</h3><p>Download schema, metadata, timelines, relationships, reservation coverage, and archive records.</p><button class="primary-button" data-action="export">Export JSON</button></article><article class="action-tile"><h3>Import and replace</h3><p>Validate a JSON file, preview its contents, then create a local backup before replacement.</p><button class="quiet-button" data-action="import">Choose JSON file</button></article><article class="action-tile"><h3>Sample planning scenario</h3><p>Load the clearly identified 2027 example with projects, overruns, reserve, and future purchases.</p><button class="quiet-button" data-action="sample">Load sample data</button></article><article class="action-tile"><h3>Reset local workspace</h3><p>Permanently remove all local data and backups. The required Shared Platform / Unassigned project will be recreated.</p><button class="danger-button" data-action="reset">Reset all data</button></article></div><section class="panel" style="margin-top:16px"><h2>Dataset summary</h2><p class="panel-sub">Schema ${data.schemaVersion} · localStorage key <code>${Store.KEY}</code></p><div class="kpi-row"><div class="stat-card"><strong>${data.capacityEntries.length}</strong><span>Capacity entries</span></div><div class="stat-card"><strong>${data.projects.length}</strong><span>Projects</span></div><div class="stat-card"><strong>${data.apis.length}</strong><span>APIs</span></div><div class="stat-card"><strong>${new Blob([JSON.stringify(data)]).size.toLocaleString()}</strong><span>Bytes</span></div></div></section>`
+      `<div class="data-actions"><article class="action-tile"><h3>Export complete dataset</h3><p>Download schema, metadata, timelines, relationships, reservation coverage, and archive records.</p><button class="primary-button" data-action="export">Export JSON</button></article><article class="action-tile"><h3>Import and replace</h3><p>Validate a JSON file, preview its contents, then create a local backup before replacement.</p><button class="quiet-button" data-action="import">Choose JSON file</button></article><article class="action-tile"><h3>Sample planning scenario</h3><p>Load the clearly identified 2027 example with projects, overruns, and future purchases.</p><button class="quiet-button" data-action="sample">Load sample data</button></article><article class="action-tile"><h3>Reset local workspace</h3><p>Permanently remove all local data and backups. The required Shared Platform / Unassigned project will be recreated.</p><button class="danger-button" data-action="reset">Reset all data</button></article></div><section class="panel" style="margin-top:16px"><h2>Dataset summary</h2><p class="panel-sub">Schema ${data.schemaVersion} · localStorage key <code>${Store.KEY}</code></p><div class="kpi-row"><div class="stat-card"><strong>${data.capacityEntries.length}</strong><span>Capacity entries</span></div><div class="stat-card"><strong>${data.projects.length}</strong><span>Projects</span></div><div class="stat-card"><strong>${data.apis.length}</strong><span>APIs</span></div><div class="stat-card"><strong>${new Blob([JSON.stringify(data)]).size.toLocaleString()}</strong><span>Bytes</span></div></div></section>`
     );
   }
   global.UI = {
@@ -322,7 +275,6 @@
         apis,
         projects,
         capacity,
-        reserve,
         forecast,
         data: dataView,
       }[view](data, state);

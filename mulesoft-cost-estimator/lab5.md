@@ -43,7 +43,7 @@ Record Digital Checkout's go-live, verify that classification changes do not dup
 2. Under **Export complete dataset**, click **Export JSON**.
 3. Save the downloaded `mulesoft-capacity-2027-04.json` file in the location your browser offers.
 
-The export contains capacity entries, reserves, projects, APIs, coverages, and every effective-dated January and April value. It can be validated and restored later through **Choose JSON file**.
+The export contains capacity entries, projects, APIs, coverages, and every effective-dated January and April value. It can be validated and restored later through **Choose JSON file**.
 
 ## Final review
 
@@ -52,7 +52,6 @@ Your scenario should now contain:
 - Two learner-created projects: Digital Checkout and Store Fulfillment
 - Three APIs: Checkout Experience, Inventory Availability, and Fulfillment Orchestration
 - Base capacity effective January 2027
-- A protected strategic reserve
 - Ordered flow capacity effective April 2027
 - Planned pre-production capacity effective July 2027
 - Preserved before-and-after history for the Digital Checkout launch

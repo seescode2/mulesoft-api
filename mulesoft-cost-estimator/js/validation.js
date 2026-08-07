@@ -11,11 +11,6 @@
     ["capacityEntries", "projects", "apis"].forEach((k) => {
       if (!Array.isArray(data[k])) errors.push(`${k} must be an array.`);
     });
-    if (
-      !data.strategicReserves ||
-      pools.some((p) => !Array.isArray(data.strategicReserves[p]))
-    )
-      errors.push("Strategic reserve timelines are missing or invalid.");
     const all = [
         ...(data.capacityEntries || []),
         ...(data.projects || []),

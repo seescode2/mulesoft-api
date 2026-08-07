@@ -36,7 +36,6 @@
         updatedAt: new Date().toISOString(),
       },
       capacityEntries: [],
-      strategicReserves: { flow: [], apiPre: [], apiProd: [] },
       projects: [builtInProject()],
       apis: [],
     };
@@ -48,6 +47,9 @@
       const data = JSON.parse(raw);
       if (!data || data.schemaVersion !== SCHEMA)
         throw new Error(`Unsupported schema version. Expected ${SCHEMA}.`);
+      // Strategic reserve was removed from the planner. Drop legacy values while
+      // preserving compatibility with datasets saved by earlier versions.
+      delete data.strategicReserves;
       return { data, isNew: false, error: null };
     } catch (error) {
       return {
@@ -67,6 +69,7 @@
   }
   function replace(data) {
     backup();
+    delete data.strategicReserves;
     save(data);
   }
   function reset(storage = localStorage) {

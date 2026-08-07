@@ -12,22 +12,21 @@ Record future supply, inspect the January-to-December outlook, and review the co
 
 ## 1. Add the ordered flow capacity
 
-1. The workspace always shows the committed forecast.
-2. Click **License Capacity** in the left navigation.
-3. Click **+ Add capacity**.
-4. Enter:
+1. Click **Purchased Capacity** in the left navigation.
+2. Click **+ Add purchase**.
+3. Enter:
    - **License pool:** Flow licenses
    - **Quantity:** `10`
    - **Effective month:** April 2027
    - **Status:** ordered
    - **Description or notes:** `Approved fulfillment expansion`
-5. Click **Save changes**.
+4. Click **Save changes**.
 
 Ordered capacity counts beginning in its effective month.
 
 ## 2. Record tentative capacity
 
-1. Click **+ Add capacity**.
+1. Click **+ Add purchase**.
 2. Enter:
    - **License pool:** API Manager pre-production
    - **Quantity:** `5`
@@ -36,19 +35,19 @@ Ordered capacity counts beginning in its effective month.
    - **Description or notes:** `Tentative pre-production expansion`
 3. Click **Save changes**.
 
-The entry remains visible as uncertain supply but is not included in owned capacity.
+The entry remains visible in the capacity list but does not count as purchased until its status becomes ordered or active.
 
 ## 3. Inspect the forecast
 
 1. Set the reporting month to **January 2027**.
 2. Click **Monthly Forecast**.
 3. Read the **Flow licenses** cell for January, then April:
-   - January should show `30 / 27 / -1` and **Shortfall**.
-   - April should show `40 / 27 / 9` and **Covered**.
-4. Notice that the July pre-production planned entry does not increase owned capacity.
+   - January should show `30 / 5 / 22 / 3` and **Covered**.
+   - April should show `40 / 5 / 22 / 13` and **Covered**.
+4. Notice that the July pre-production planned entry does not increase purchased capacity.
 
-The forecast's free value also subtracts strategic reserve, even though the compact cell displays only owned, demand, and free.
+The compact values are purchased, used, reserved, and extra.
 
-## 4. Review uncertain supply
+## 4. Review purchased capacity
 
-On the Dashboard, confirm the planned July entry appears as uncertain supply without increasing owned capacity.
+On the Dashboard, confirm the planned July entry does not increase Purchased.

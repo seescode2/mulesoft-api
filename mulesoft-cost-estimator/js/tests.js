@@ -39,6 +39,32 @@
   eq("Pre-production reserved", d.apiPre.reserved, 1);
   eq("Production reserved", d.apiProd.reserved, 1);
   eq("Production used", d.apiProd.used, 0);
+  const organizationData = {
+    capacityEntries: [
+      {
+        pool: "flow",
+        quantity: 15,
+        effectiveMonth: "2027-01",
+        status: "active",
+      },
+      {
+        pool: "flow",
+        quantity: 100,
+        effectiveMonth: "2027-01",
+        status: "planned",
+      },
+    ],
+    projects: [],
+    apis: [api],
+  };
+  let organization = Calc.organization(organizationData, "2027-01");
+  eq("Purchased includes active capacity", organization.flow.purchased, 15);
+  eq("Planned capacity is not purchased", organization.flow.purchased, 15);
+  eq("Extra completes the capacity equation", organization.flow.extra, 3);
+  organizationData.capacityEntries[0].quantity = 10;
+  organization = Calc.organization(organizationData, "2027-01");
+  eq("Extra becomes negative when demand exceeds purchases", organization.flow.extra, -2);
+  eq("Purchased remains the recorded quantity", organization.flow.purchased, 10);
   let t = [
     { effectiveMonth: "2027-01", value: 1 },
     { effectiveMonth: "2027-06", value: 2 },

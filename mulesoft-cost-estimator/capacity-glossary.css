@@ -4,7 +4,7 @@
 
 .capacity-glossary dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   margin: 0;
   border: 1px solid var(--line);
@@ -18,11 +18,11 @@
   border-bottom: 1px solid var(--line);
 }
 
-.capacity-glossary dl div:nth-child(3n) {
+.capacity-glossary dl div:nth-child(2n) {
   border-right: 0;
 }
 
-.capacity-glossary dl div:nth-last-child(-n + 3) {
+.capacity-glossary dl div:nth-last-child(-n + 2) {
   border-bottom: 0;
 }
 
@@ -47,25 +47,27 @@
   font-size: 13px;
 }
 
-@media (max-width: 850px) {
-  .capacity-glossary dl {
-    grid-template-columns: 1fr 1fr;
-  }
+.capacity-equation {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
 
-  .capacity-glossary dl div,
-  .capacity-glossary dl div:nth-child(3n),
-  .capacity-glossary dl div:nth-last-child(-n + 3) {
-    border-right: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-  }
+.purchased-meter {
+  display: flex;
+}
 
-  .capacity-glossary dl div:nth-child(2n) {
-    border-right: 0;
-  }
+.purchased-meter .used {
+  background: var(--blue);
+}
 
-  .capacity-glossary dl div:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
+.purchased-meter .reserved {
+  background: #f79009;
+}
+
+.negative {
+  color: var(--red);
 }
 
 @media (max-width: 520px) {

@@ -296,56 +296,6 @@
       },
     );
   }
-  function reserveModal() {
-    showModal(
-      "Change strategic reserve",
-      "Explicit release or protection",
-      `<div class="form-grid"><div class="field full"><label>Effective month</label><input type="month" name="month" required value="${state.month}"></div>${Object.entries(
-        Calc.POOLS,
-      )
-        .map(
-          ([p, l]) =>
-            `<div class="field"><label>${l}</label><input type="number" min="0" name="${p}" value="${Timelines.effective(data.strategicReserves[p], state.month, 0)}"></div>`,
-        )
-        .join(
-          "",
-        )}</div><div class="advisory">Reserve reductions return capacity to the freely available pool. They do not assign capacity to any project or API.</div>`,
-      (fd) => {
-        const month = fd.get("month"),
-          notes = [];
-        Object.keys(Calc.POOLS).forEach((p) => {
-          const v = +fd.get(p),
-            old = Timelines.effective(data.strategicReserves[p], month, 0);
-          if (v < 0) return;
-          if (v < old)
-            notes.push(
-              `${Calc.POOLS[p]} reserve decreases by ${old - v}; released capacity returns to the organization pool.`,
-            );
-          notes.push(
-            ...Timelines.warnings(
-              data.strategicReserves[p],
-              month,
-              old,
-              v,
-              `${Calc.POOLS[p]} reserve`,
-            ),
-          );
-        });
-        advisory(notes, () => {
-          Object.keys(Calc.POOLS).forEach(
-            (p) =>
-              (data.strategicReserves[p] = Timelines.upsert(
-                data.strategicReserves[p],
-                month,
-                +fd.get(p),
-              )),
-          );
-          close();
-          persist("Strategic reserve timeline updated.");
-        });
-      },
-    );
-  }
   function archiveApi(id) {
     const api = data.apis.find((x) => x.id === id),
       archived = Calc.lifecycle(api, state.month) === "archived";
@@ -437,7 +387,7 @@
   function resetWorkspace() {
     if (
       prompt(
-        "This permanently removes all local projects, APIs, capacity, reserves, and backups. Type RESET to continue.",
+        "This permanently removes all local projects, APIs, capacity, and backups. Type RESET to continue.",
       ) !== "RESET"
     )
       return;
@@ -552,7 +502,6 @@
             persist("Capacity entry deleted.");
           }
         },
-        "edit-reserve": reserveModal,
         export: exportData,
         import: () => $("#import-file").click(),
         sample: () => {

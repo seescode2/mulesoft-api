@@ -186,11 +186,6 @@
         cap("cap_oct", "apiPre", 10, m(10), "planned", "October forecast"),
         cap("cap_dec", "apiPre", 10, m(12), "planned", "December forecast"),
       ],
-      strategicReserves: {
-        flow: [{ effectiveMonth: m(1), value: 4 }],
-        apiPre: [{ effectiveMonth: m(1), value: 1 }],
-        apiProd: [{ effectiveMonth: m(1), value: 1 }],
-      },
       projects,
       apis,
     };

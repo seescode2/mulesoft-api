@@ -8,7 +8,7 @@ This lab deliberately creates an overrun. You will use the warnings to distingui
 
 ## Goal
 
-Add the new API, observe its uncovered demand, then expand the Store Fulfillment reservation and see the resulting organization shortfall.
+Add the new API, observe its uncovered demand, then expand the Store Fulfillment reservation and review the remaining extra capacity.
 
 ## 1. Add the Fulfillment Orchestration API
 
@@ -58,3 +58,5 @@ The steering group approves the project's full requirement, even though organiza
 ## 5. Verify recalculated coverage
 
 Saving the larger project reservation automatically covers the remaining API demand.
+
+On the Dashboard, Flow licenses should show `30 Purchased = 5 Used + 22 Reserved + 3 Extra`.
