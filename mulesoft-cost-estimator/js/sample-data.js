@@ -50,6 +50,7 @@
           prod: [{ effectiveMonth: m(1), value: envs.prod }],
         },
         allocations: [{ effectiveMonth: m(1), value: alloc }],
+        architectureLayer: extra.architectureLayer || "process",
         archive: extra.archive || null,
         createdAt: now,
         updatedAt: now,
@@ -76,6 +77,7 @@
         },
         { flow: 9, apiPre: 2, apiProd: 1 },
         {
+          architectureLayer: "experience",
           consumers: [
             {
               projectId: "project_orders",
@@ -98,6 +100,7 @@
           prod: cfg("reserved", "reserved", 2),
         },
         { flow: 8, apiPre: 2, apiProd: 1 },
+        { architectureLayer: "process" },
       ),
       api(
         "api_forecast",
@@ -111,6 +114,7 @@
           prod: cfg("inactive", "not-managed", 0),
         },
         { flow: 0, apiPre: 0, apiProd: 0 },
+        { architectureLayer: "process" },
       ),
       api(
         "api_shared",
@@ -124,6 +128,7 @@
           prod: cfg("used", "used", 2),
         },
         { flow: 0, apiPre: 0, apiProd: 0 },
+        { architectureLayer: "system" },
       ),
       api(
         "api_legacy",
@@ -138,6 +143,7 @@
         },
         { flow: 0, apiPre: 0, apiProd: 0 },
         {
+          architectureLayer: "system",
           archive: {
             effectiveMonth: m(4),
             reason: "Cancelled",
@@ -188,6 +194,34 @@
       ],
       projects,
       apis,
+      nonApiWorkloads: [
+        {
+          id: "workload_order_reconciliation",
+          name: "Nightly order reconciliation",
+          description:
+            "Scheduled comparison of fulfilled orders with finance records.",
+          kind: "Scheduled process",
+          projectId: "project_orders",
+          lifecycle: "operational",
+          schedule: "Daily at 02:00 UTC",
+          environments: ["prod"],
+          flowUsed: 2,
+          flowReserved: 0,
+        },
+        {
+          id: "workload_forecast_refresh",
+          name: "Forecast model refresh",
+          description:
+            "Batch workload that prepares demand features for forecasting.",
+          kind: "Batch job",
+          projectId: "project_insights",
+          lifecycle: "planned",
+          schedule: "Every Monday",
+          environments: ["test", "prod"],
+          flowUsed: 0,
+          flowReserved: 2,
+        },
+      ],
     };
   }
   global.SampleData = { create };

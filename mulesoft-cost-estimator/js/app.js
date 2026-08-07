@@ -17,6 +17,7 @@
     if (message) toast(message);
   }
   function render() {
+    closeInspector();
     document
       .querySelectorAll(".view")
       .forEach((v) => v.classList.remove("active"));
@@ -52,6 +53,25 @@
   }
   function close() {
     modal.close();
+  }
+  function closeInspector() {
+    $("#api-inspector").classList.remove("open");
+    $("#api-inspector").setAttribute("aria-hidden", "true");
+    $("#api-inspector").setAttribute("inert", "");
+    $("#api-inspector-backdrop").classList.remove("open");
+  }
+  function showInspector(kind, id) {
+    $("#api-inspector-content").innerHTML = UI.architectureDetail(
+      data,
+      state,
+      kind,
+      id,
+    );
+    $("#api-inspector").classList.add("open");
+    $("#api-inspector").setAttribute("aria-hidden", "false");
+    $("#api-inspector").removeAttribute("inert");
+    $("#api-inspector-backdrop").classList.add("open");
+    $("#api-inspector .inspector-close").focus();
   }
   function advisory(notes, commit) {
     if (!notes.length) {
@@ -465,12 +485,20 @@
       state.filters = {};
       return render();
     }
+    const groupFilter = e.target.closest("[data-group-filter]");
+    if (groupFilter) {
+      state.filters.owner = groupFilter.dataset.groupFilter;
+      return render();
+    }
     const action = e.target.closest("[data-action]")?.dataset.action,
-      id = e.target.closest("[data-id]")?.dataset.id;
+      actionTarget = e.target.closest("[data-id]"),
+      id = actionTarget?.dataset.id;
     if (!action) return;
     (
       ({
         "add-api": () => apiModal(),
+        "inspect-architecture-item": () =>
+          showInspector(actionTarget.dataset.kind, id),
         "add-project-api": () => apiModal(null, id),
         "edit-api": () => apiModal(id),
         "archive-api": () => archiveApi(id),
@@ -536,6 +564,10 @@
   });
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-close]")) close();
+    if (e.target.closest("[data-inspector-close]")) closeInspector();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeInspector();
   });
   $("#selected-month").addEventListener("change", (e) => {
     if (Timelines.isMonth(e.target.value)) {

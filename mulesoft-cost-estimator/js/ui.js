@@ -107,58 +107,164 @@
       .join("");
     return `<div class="toolbar"><input type="search" data-filter="search" placeholder="Search ${kind} by name…" value="${esc(state.filters.search || "")}">${kind === "APIs" ? `<select data-filter="owner"><option value="">All owning projects</option>${projects}</select><select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "in-development", "operational", "on-hold", "archived"].map((x) => `<option>${x}</option>`).join("")}</select><select data-filter="demand"><option value="">Reserved and used</option><option value="used">Used</option><option value="reserved">Reserved</option><option value="override">With overrides</option></select>` : `<select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "active", "on-hold", "archived"].map((x) => `<option>${x}</option>`).join("")}</select>`}</div>`;
   }
+  function architectureLayer(api) {
+    const explicit = String(api.architectureLayer || "").toLowerCase(),
+      aliases = {
+        exp: "experience",
+        experience: "experience",
+        prc: "process",
+        process: "process",
+        sys: "system",
+        system: "system",
+      };
+    if (aliases[explicit]) return aliases[explicit];
+    const words = `${api.name || ""} ${api.description || ""}`.toLowerCase();
+    if (/system|database|record|identity|legacy|sap|salesforce/.test(words))
+      return "system";
+    if (/experience|channel|mobile|web|portal|gateway|customer/.test(words))
+      return "experience";
+    return "process";
+  }
+  function projectName(data, id) {
+    return (
+      data.projects.find((project) => project.id === id) || {
+        name: "Missing project",
+      }
+    ).name;
+  }
+  function groupClass(data, projectId) {
+    const index = Math.max(
+      0,
+      data.projects.findIndex((project) => project.id === projectId),
+    );
+    return `group-color-${index % 8}`;
+  }
+  function architectureFilters(data, state) {
+    return `<div class="toolbar architecture-toolbar"><input type="search" data-filter="search" placeholder="Search architecture assets…" value="${esc(state.filters.search || "")}"><select data-filter="lifecycle"><option value="">All lifecycle states</option>${["planned", "in-development", "operational", "on-hold", "archived"].map((x) => `<option value="${x}" ${state.filters.lifecycle === x ? "selected" : ""}>${title(x)}</option>`).join("")}</select></div>`;
+  }
   function apis(data, state) {
-    let rows = data.apis.filter((a) => {
-      const q = (state.filters.search || "").toLowerCase(),
-        life = Calc.lifecycle(a, state.month),
-        own = Calc.owner(a, state.month),
-        d = Calc.apiDemand(a, state.month);
-      if (q && !a.name.toLowerCase().includes(q)) return false;
-      if (state.filters.owner && state.filters.owner !== own) return false;
-      if (state.filters.lifecycle && state.filters.lifecycle !== life)
-        return false;
-      if (state.filters.demand === "used" && !d.flow.used) return false;
-      if (state.filters.demand === "reserved" && !d.flow.reserved) return false;
-      if (
-        state.filters.demand === "override" &&
-        !["dev", "test", "prod"].some((e) => {
-          const c = Timelines.effective(a.environments[e], state.month, {});
-          return (
-            c.flowOverride !== null &&
-            c.flowOverride !== "" &&
-            c.flowOverride !== undefined
-          );
+    const workloads = data.nonApiWorkloads || [],
+      q = (state.filters.search || "").toLowerCase(),
+      matches = (item, lifecycle) =>
+        (!q ||
+          `${item.name || ""} ${item.description || ""}`
+            .toLowerCase()
+            .includes(q)) &&
+        (!state.filters.lifecycle || state.filters.lifecycle === lifecycle),
+      matchingApis = data.apis.filter((api) =>
+        matches(api, Calc.lifecycle(api, state.month)),
+      ),
+      matchingWorkloads = workloads.filter((workload) =>
+        matches(workload, workload.lifecycle || "operational"),
+      ),
+      apiRows = matchingApis.filter(
+        (api) =>
+          !state.filters.owner ||
+          state.filters.owner === Calc.owner(api, state.month),
+      ),
+      workloadRows = matchingWorkloads.filter(
+        (workload) =>
+          !state.filters.owner ||
+          state.filters.owner ===
+            (workload.projectId || "project_shared_platform"),
+      ),
+      layers = [
+        {
+          id: "experience",
+          short: "EXP",
+          name: "Experience APIs",
+          description: "Channel-facing APIs tailored to a consumer experience.",
+          items: apiRows.filter(
+            (api) => architectureLayer(api) === "experience",
+          ),
+        },
+        {
+          id: "process",
+          short: "PRC",
+          name: "Process APIs",
+          description: "Business orchestration and reusable process logic.",
+          items: apiRows.filter((api) => architectureLayer(api) === "process"),
+        },
+        {
+          id: "system",
+          short: "SYS",
+          name: "System APIs",
+          description: "Controlled access to systems of record and core data.",
+          items: apiRows.filter((api) => architectureLayer(api) === "system"),
+        },
+      ],
+      activeProjectIds = new Set([
+        ...matchingApis.map((api) => Calc.owner(api, state.month)),
+        ...matchingWorkloads.map(
+          (workload) =>
+            workload.projectId || "project_shared_platform",
+        ),
+      ]),
+      groupButtons = data.projects
+        .filter((project) => activeProjectIds.has(project.id))
+        .map((project) => {
+          const count =
+            matchingApis.filter(
+              (api) => Calc.owner(api, state.month) === project.id,
+            ).length +
+            matchingWorkloads.filter(
+              (workload) =>
+                (workload.projectId || "project_shared_platform") ===
+                project.id,
+            ).length;
+          return `<button class="group-key ${groupClass(data, project.id)} ${state.filters.owner === project.id ? "active" : ""}" data-group-filter="${esc(project.id)}"><i></i>${esc(project.name)} <strong>${count}</strong></button>`;
         })
-      )
-        return false;
-      return true;
-    });
-    const project = (id) =>
-      (data.projects.find((p) => p.id === id) || { name: "Missing project" })
-        .name;
+        .join(""),
+      apiPill = (api) => {
+        const owner = Calc.owner(api, state.month),
+          demand = Calc.apiDemand(api, state.month);
+        return `<button class="architecture-pill ${groupClass(data, owner)}" data-action="inspect-architecture-item" data-kind="api" data-id="${esc(api.id)}"><i></i><span><strong>${esc(api.name)}</strong><small>${esc(projectName(data, owner))} · ${n(demand.totalFlows)} flows</small></span><b aria-hidden="true">›</b></button>`;
+      },
+      workloadPill = (workload) => {
+        const owner = workload.projectId || "project_shared_platform";
+        return `<button class="architecture-pill workload-pill ${groupClass(data, owner)}" data-action="inspect-architecture-item" data-kind="workload" data-id="${esc(workload.id)}"><i></i><span><strong>${esc(workload.name)}</strong><small>${esc(projectName(data, owner))} · ${esc(workload.kind || "Non-API workload")}</small></span><b aria-hidden="true">›</b></button>`;
+      };
     return (
       head(
-        "API portfolio",
+        "API-led architecture",
         "APIs",
-        `Configuration and demand effective ${Timelines.label(state.month)}.`,
-        `<button class="primary-button" data-action="add-api">+ Add API</button>`,
+        `Read-only architecture and demand effective ${Timelines.label(state.month)}. Select any asset to inspect it.`,
       ) +
-      filters("APIs", data, state) +
-      `<div class="table-wrap"><table><thead><tr><th>API</th><th>Owning project</th><th>Lifecycle</th><th>DEV</th><th>TEST</th><th>PROD</th><th>Used flows</th><th>Reserved flows</th><th>API Manager pre/prod</th><th>Consumers</th><th></th></tr></thead><tbody>${
-        rows
-          .map((a) => {
-            const d = Calc.apiDemand(a, state.month),
-              env = (e) =>
-                Timelines.effective(a.environments[e], state.month, {
-                  flowState: "inactive",
-                  apiState: "not-managed",
-                });
-            return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${esc(project(Calc.owner(a, state.month)))}</td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${env(e).flowState}">${title(env(e).flowState)}</span><br><span class="subtle">AM: ${title(env(e).apiState)}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td>${a.consumers.filter((c) => c.startMonth <= state.month && (!c.endMonth || c.endMonth >= state.month)).length}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${a.id}">Edit</button><button data-action="archive-api" data-id="${a.id}">${Calc.lifecycle(a, state.month) === "archived" ? "Restore" : "Archive"}</button><button data-action="delete-api" data-id="${a.id}">Delete</button></div></td></tr>`;
-          })
-          .join("") ||
-        `<tr><td colspan="11"><div class="empty">No APIs match these filters.</div></td></tr>`
-      }</tbody></table></div>`
+      architectureFilters(data, state) +
+      `<section class="architecture-groups" aria-label="Architecture groups"><div><span class="group-label">Group by owning project</span><p>Color identifies the project responsible for each asset.</p></div><div class="group-keys"><button class="group-key group-all ${state.filters.owner ? "" : "active"}" data-group-filter=""><i></i>All groups</button>${groupButtons}</div></section><div class="architecture-stack">${layers
+        .map(
+          (layer) =>
+            `<section class="architecture-layer layer-${layer.id}"><header><span class="layer-code">${layer.short}</span><div><h2>${layer.name}</h2><p>${layer.description}</p></div><strong>${layer.items.length}</strong></header><div class="architecture-pills">${layer.items.map(apiPill).join("") || `<div class="layer-empty">No ${layer.name.toLowerCase()} match this view.</div>`}</div></section>`,
+        )
+        .join("")}<section class="architecture-layer layer-workload"><header><span class="layer-code">JOB</span><div><h2>Non-API workloads</h2><p>Scheduled processes, batch jobs, event workers, and other runtime workloads.</p></div><strong>${workloadRows.length}</strong></header><div class="architecture-pills">${workloadRows.map(workloadPill).join("") || '<div class="layer-empty">No non-API workloads are recorded in this dataset.</div>'}</div></section></div>`
     );
+  }
+  function architectureDetail(data, state, kind, id) {
+    if (kind === "workload") {
+      const workload = (data.nonApiWorkloads || []).find(
+        (item) => item.id === id,
+      );
+      if (!workload) return '<div class="empty">Workload not found.</div>';
+      const owner = workload.projectId || "project_shared_platform";
+      return `<div class="inspector-heading"><span class="layer-code">JOB</span><p class="eyebrow">${esc(workload.kind || "Non-API workload")}</p><h2>${esc(workload.name)}</h2><p>${esc(workload.description || "No description provided.")}</p></div><div class="inspector-stats"><div><span>Group</span><strong>${esc(projectName(data, owner))}</strong></div><div><span>Lifecycle</span><strong>${title(workload.lifecycle || "operational")}</strong></div><div><span>Schedule</span><strong>${esc(workload.schedule || "Not recorded")}</strong></div><div><span>Environment</span><strong>${esc((Array.isArray(workload.environments) ? workload.environments : []).map((env) => String(env).toUpperCase()).join(", ") || "Not recorded")}</strong></div><div><span>Used flows</span><strong>${n(workload.flowUsed)}</strong></div><div><span>Reserved flows</span><strong>${n(workload.flowReserved)}</strong></div></div>`;
+    }
+    const api = data.apis.find((item) => item.id === id);
+    if (!api) return '<div class="empty">API not found.</div>';
+    const owner = Calc.owner(api, state.month),
+      demand = Calc.apiDemand(api, state.month),
+      layer = architectureLayer(api),
+      layerCodes = { experience: "EXP", process: "PRC", system: "SYS" },
+      environments = ["dev", "test", "prod"]
+        .map((env) => {
+          const config = Timelines.effective(
+            api.environments[env],
+            state.month,
+            { flowState: "inactive", apiState: "not-managed", replicas: 0 },
+          );
+          return `<div class="inspector-environment"><strong>${env.toUpperCase()}</strong><span class="state ${config.flowState}">${title(config.flowState)}</span><small>${n(demand.byEnv[env].used)} used · ${n(demand.byEnv[env].reserved)} reserved flows</small><small>API Manager: ${title(config.apiState)} · ${n(config.replicas)} replicas</small></div>`;
+        })
+        .join("");
+    return `<div class="inspector-heading"><span class="layer-code">${layerCodes[layer]}</span><p class="eyebrow">${title(layer)} API</p><h2>${esc(api.name)}</h2><p>${esc(api.description || "No description provided.")}</p></div><div class="inspector-stats"><div><span>Group</span><strong>${esc(projectName(data, owner))}</strong></div><div><span>Lifecycle</span><strong>${title(Calc.lifecycle(api, state.month))}</strong></div><div><span>Base flows</span><strong>${n(Timelines.effective(api.baseFlows, state.month, 0))}</strong></div><div><span>Active consumers</span><strong>${api.consumers.filter((consumer) => consumer.startMonth <= state.month && (!consumer.endMonth || consumer.endMonth >= state.month)).length}</strong></div><div><span>Used flows</span><strong>${n(demand.flow.used)}</strong></div><div><span>Reserved flows</span><strong>${n(demand.flow.reserved)}</strong></div><div><span>API Manager pre-prod</span><strong>${n(demand.apiPre.used)} used · ${n(demand.apiPre.reserved)} reserved</strong></div><div><span>API Manager production</span><strong>${n(demand.apiProd.used)} used · ${n(demand.apiProd.reserved)} reserved</strong></div></div><section class="inspector-section"><h3>Environment demand</h3><div class="inspector-environments">${environments}</div></section>`;
   }
   function projects(data, state) {
     let rows = data.projects.filter((p) => {
@@ -288,6 +394,7 @@
     esc,
     title,
     badge,
+    architectureDetail,
     render(view, data, state) {
       return {
         dashboard,

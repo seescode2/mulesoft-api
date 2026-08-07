@@ -61,6 +61,8 @@ Equivalently: `purchased = used + reserved + extra`. Extra becomes negative when
 
 Every active API has one effective-dated owner. The protected **Shared Platform / Unassigned** project is the fallback. Consumer projects are effective-dated informational relationships only and never duplicate demand. Project reservations are pool-level and persist until explicitly changed. API demand is covered automatically from its owning project’s available reservation whenever a project or API is saved. Coverage may be partial. Changing reserved configuration to used changes classification without duplicating demand.
 
+The APIs screen is a read-only API-led architecture view with Experience, Process, System, and non-API workload layers. An API can provide an optional `architectureLayer` value (`experience`, `process`, or `system`); existing records without one are placed deterministically from their name and description. Owning projects provide the visual grouping. Optional `nonApiWorkloads` records support scheduled processes, batch jobs, and similar runtime assets in the fourth layer.
+
 Lifecycle values are descriptive. They never alter demand automatically. Archive workflows are the exception: API archive adds inactive/not-managed environment records from its effective month, while preserving all history. Project archive releases unassigned reservation but preserves coverage for remaining APIs.
 
 ## Effective-dated timelines

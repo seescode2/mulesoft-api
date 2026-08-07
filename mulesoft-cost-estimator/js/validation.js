@@ -8,13 +8,14 @@
       return ["The import must be a JSON object."];
     if (data.schemaVersion !== Store.SCHEMA)
       errors.push(`Schema version must be ${Store.SCHEMA}.`);
-    ["capacityEntries", "projects", "apis"].forEach((k) => {
+    ["capacityEntries", "projects", "apis", "nonApiWorkloads"].forEach((k) => {
       if (!Array.isArray(data[k])) errors.push(`${k} must be an array.`);
     });
     const all = [
         ...(data.capacityEntries || []),
         ...(data.projects || []),
         ...(data.apis || []),
+        ...(data.nonApiWorkloads || []),
       ],
       ids = new Set();
     all.forEach((item) => {
@@ -59,6 +60,16 @@
           (c.endMonth && !Timelines.isMonth(c.endMonth))
         )
           errors.push(`API ${api.id}: invalid consumer month.`);
+      });
+    });
+    (data.nonApiWorkloads || []).forEach((workload) => {
+      if (!projectIds.has(workload.projectId))
+        errors.push(
+          `Workload ${workload.id}: project ${workload.projectId} does not exist.`,
+        );
+      ["flowUsed", "flowReserved"].forEach((field) => {
+        if (!Number.isFinite(workload[field]) || workload[field] < 0)
+          errors.push(`Workload ${workload.id}: ${field} cannot be negative.`);
       });
     });
     return [...new Set(errors)];

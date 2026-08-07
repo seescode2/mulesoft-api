@@ -6,6 +6,7 @@
   <title>MuleSoft Capacity Planner</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="projects.css">
+  <link rel="stylesheet" href="api-architecture.css">
   <link rel="stylesheet" href="capacity-glossary.css">
 </head>
 <body>
@@ -41,6 +42,12 @@
       <section id="view-data" class="view"></section>
     </main>
   </div>
+
+  <div id="api-inspector-backdrop" class="inspector-backdrop" data-inspector-close></div>
+  <aside id="api-inspector" class="api-inspector" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Architecture asset details" inert>
+    <button type="button" class="icon-button inspector-close" data-inspector-close aria-label="Close details">×</button>
+    <div id="api-inspector-content"></div>
+  </aside>
 
   <dialog id="modal"><form method="dialog" id="modal-form"><div class="modal-head"><div><p id="modal-eyebrow" class="eyebrow"></p><h2 id="modal-title"></h2></div><button type="button" class="icon-button" data-close aria-label="Close">×</button></div><div id="modal-body" class="modal-body"></div><div id="modal-actions" class="modal-actions"></div></form></dialog>
   <dialog id="confirm-dialog"><form method="dialog"><div class="modal-head"><div><p class="eyebrow">Review impact</p><h2 id="confirm-title">Save this change?</h2></div></div><div id="confirm-body" class="modal-body"></div><div class="modal-actions"><button value="cancel" class="quiet-button">Cancel</button><button value="confirm" class="primary-button">Save anyway</button></div></form></dialog>

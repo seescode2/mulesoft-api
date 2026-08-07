@@ -141,6 +141,7 @@
   const reset = Store.reset(fakeStorage);
   eq("Reset leaves only the built-in project", reset.projects.length, 1);
   eq("Reset removes user APIs", reset.apis.length, 0);
+  eq("Reset removes non-API workloads", reset.nonApiWorkloads.length, 0);
   eq("Reset removes capacity", reset.capacityEntries.length, 0);
   eq(
     "Reset clears the import backup",

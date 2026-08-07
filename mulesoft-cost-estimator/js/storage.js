@@ -38,10 +38,12 @@
       capacityEntries: [],
       projects: [builtInProject()],
       apis: [],
+      nonApiWorkloads: [],
     };
   }
   function migrate(data) {
     if (!data || typeof data !== "object") return data;
+    if (!Array.isArray(data.nonApiWorkloads)) data.nonApiWorkloads = [];
     // Normalize fields and statuses removed from earlier planner versions.
     delete data.strategicReserves;
     if (Array.isArray(data.capacityEntries)) {
