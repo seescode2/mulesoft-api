@@ -56,14 +56,22 @@
     }
     return data;
   }
-  function load() {
-    const raw = localStorage.getItem(KEY);
+  function load(storage = localStorage) {
+    const raw = storage.getItem(KEY);
     if (!raw) return { data: empty(), isNew: true, error: null };
     try {
       const data = JSON.parse(raw);
       if (!data || data.schemaVersion !== SCHEMA)
         throw new Error(`Unsupported schema version. Expected ${SCHEMA}.`);
-      return { data: migrate(data), isNew: false, error: null };
+      migrate(data);
+      if (!global.Validate || typeof global.Validate.dataset !== "function")
+        throw new Error("Dataset validation is unavailable.");
+      const errors = global.Validate.dataset(data);
+      if (errors.length)
+        throw new Error(
+          `Stored dataset is invalid: ${errors.slice(0, 3).join(" ")}`,
+        );
+      return { data, isNew: false, error: null };
     } catch (error) {
       return {
         data: empty(),

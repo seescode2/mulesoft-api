@@ -148,6 +148,47 @@
     fakeStorage.getItem(Store.BACKUP_KEY),
     null,
   );
+  const maliciousId = '\"><img src=x onerror=alert(1)>',
+    maliciousData = Store.empty();
+  maliciousData.projects.push({
+    id: maliciousId,
+    name: "Imported project",
+    description: "",
+    owner: "",
+    builtIn: false,
+    lifecycle: [{ effectiveMonth: "2027-01", value: "active" }],
+    reservations: [
+      {
+        effectiveMonth: "2027-01",
+        value: { flow: 0, apiPre: 0, apiProd: 0 },
+      },
+    ],
+  });
+  const maliciousErrors = Validate.dataset(maliciousData);
+  eq(
+    "Import validation rejects markup in entity IDs",
+    maliciousErrors.some((error) => error.includes("ID")),
+    true,
+  );
+  const maliciousStorage = {
+      getItem: () => JSON.stringify(maliciousData),
+    },
+    storedResult = Store.load(maliciousStorage);
+  eq(
+    "Stored payload is rejected before rendering",
+    Boolean(storedResult.error),
+    true,
+  );
+  const escapedHtml = UI.render(
+    "projects",
+    { projects: [maliciousData.projects[1]], apis: [] },
+    { month: "2027-01", filters: {} },
+  );
+  eq(
+    "Project rendering escapes markup in entity IDs",
+    escapedHtml.includes("<img"),
+    false,
+  );
   document.querySelector("#results").innerHTML =
     `<h2>${results.every((x) => x.pass) ? "✓ All tests passed" : "⚠ Tests failed"}</h2>` +
     results
