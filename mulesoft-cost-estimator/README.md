@@ -87,3 +87,11 @@ Export downloads the complete dataset: schema and metadata, purchased capacity, 
 - No daily prorating
 
 Additional limitation: data is browser-profile specific, and permanent deletion intentionally uses native strong-confirmation prompts rather than a recoverable trash area.
+
+## migrate.js
+
+Migrates json from previous version to new version.  Execute:
+
+```
+node migrate.js old.json migrated.json
+```
