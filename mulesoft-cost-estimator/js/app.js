@@ -158,16 +158,22 @@
       });
   }
 
-  function apiModal(id) {
+  function apiModal(id, projectId) {
     const api = id ? data.apis.find((x) => x.id === id) : null,
       life = api ? Calc.lifecycle(api, state.month) : "planned",
-      owner = api ? Calc.owner(api, state.month) : "project_shared_platform",
+      owner = api
+        ? Calc.owner(api, state.month)
+        : projectId || "project_shared_platform",
+      scopedProject =
+        !api && projectId
+          ? data.projects.find((project) => project.id === projectId)
+          : null,
       base = api ? Timelines.effective(api.baseFlows, state.month, 0) : 0;
     showModal(
       api ? "Edit API" : "Add API",
       "Effective-dated API",
       commonFields(api, "API") +
-        `<div class="field"><label>Owning project</label><select name="owner">${data.projects.map((p) => `<option value="${p.id}" ${owner === p.id ? "selected" : ""}>${UI.esc(p.name)}</option>`).join("")}</select></div><div class="field"><label>Lifecycle</label><select name="lifecycle">${["planned", "in-development", "operational", "on-hold", "archived"].map((x) => `<option value="${x}" ${life === x ? "selected" : ""}>${UI.title(x)}</option>`).join("")}</select></div><div class="field"><label>Shared base flow count</label><input type="number" min="0" name="base" value="${base}"></div><div class="field full"><span class="group-label">Independent environment configuration</span><div class="env-grid">${["dev", "test", "prod"].map((e) => envFields(api, e)).join("")}</div></div></div>`,
+        `${scopedProject ? `<div class="field"><label>Owning project</label><div class="readonly-field">${UI.esc(scopedProject.name)}</div><input type="hidden" name="owner" value="${UI.esc(scopedProject.id)}"></div>` : `<div class="field"><label>Owning project</label><select name="owner">${data.projects.map((p) => `<option value="${p.id}" ${owner === p.id ? "selected" : ""}>${UI.esc(p.name)}</option>`).join("")}</select></div>`}<div class="field"><label>Lifecycle</label><select name="lifecycle">${["planned", "in-development", "operational", "on-hold", "archived"].map((x) => `<option value="${x}" ${life === x ? "selected" : ""}>${UI.title(x)}</option>`).join("")}</select></div><div class="field"><label>Shared base flow count</label><input type="number" min="0" name="base" value="${base}"></div><div class="field full"><span class="group-label">Independent environment configuration</span><div class="env-grid">${["dev", "test", "prod"].map((e) => envFields(api, e)).join("")}</div></div></div>`,
       (fd) => {
         const month = fd.get("month"),
           newBase = +fd.get("base");
@@ -465,6 +471,7 @@
     (
       ({
         "add-api": () => apiModal(),
+        "add-project-api": () => apiModal(null, id),
         "edit-api": () => apiModal(id),
         "archive-api": () => archiveApi(id),
         "delete-api": () => {

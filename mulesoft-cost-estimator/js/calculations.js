@@ -74,6 +74,11 @@
     const reservation = projectReservation(project, month),
       assigned = { flow: 0, apiPre: 0, apiProd: 0 },
       demand = { flow: 0, apiPre: 0, apiProd: 0 },
+      usage = {
+        flow: { used: 0, reserved: 0 },
+        apiPre: { used: 0, reserved: 0 },
+        apiProd: { used: 0, reserved: 0 },
+      },
       classified = { reserved: 0, used: 0 };
     data.apis
       .filter((a) => owner(a, month) === project.id)
@@ -83,6 +88,8 @@
         Object.keys(assigned).forEach((p) => {
           assigned[p] += Math.min(Number(a[p] || 0), d[p].used + d[p].reserved);
           demand[p] += d[p].used + d[p].reserved;
+          usage[p].used += d[p].used;
+          usage[p].reserved += d[p].reserved;
         });
         classified.used += d.flow.used;
         classified.reserved += d.flow.reserved;
@@ -93,7 +100,15 @@
       unassigned[p] = Math.max(0, reservation[p] - assigned[p]);
       overrun[p] = Math.max(0, demand[p] - reservation[p]);
     });
-    return { reservation, assigned, demand, unassigned, overrun, classified };
+    return {
+      reservation,
+      assigned,
+      demand,
+      usage,
+      unassigned,
+      overrun,
+      classified,
+    };
   }
   function organization(data, month) {
     const out = {},

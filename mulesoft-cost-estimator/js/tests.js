@@ -39,6 +39,52 @@
   eq("Pre-production reserved", d.apiPre.reserved, 1);
   eq("Production reserved", d.apiProd.reserved, 1);
   eq("Production used", d.apiProd.used, 0);
+  api.allocations = [
+    {
+      effectiveMonth: "2027-01",
+      value: { flow: 10, apiPre: 2, apiProd: 1 },
+    },
+  ];
+  const project = {
+      id: "p",
+      reservations: [
+        {
+          effectiveMonth: "2027-01",
+          value: { flow: 15, apiPre: 3, apiProd: 2 },
+        },
+      ],
+    },
+    projectStats = Calc.projectStats(
+      { projects: [project], apis: [api] },
+      project,
+      "2027-01",
+    );
+  eq("Project rolls up used API flows", projectStats.usage.flow.used, 6);
+  eq(
+    "Project rolls up reserved API flows",
+    projectStats.usage.flow.reserved,
+    6,
+  );
+  eq(
+    "Project rolls up used pre-production APIs",
+    projectStats.usage.apiPre.used,
+    1,
+  );
+  eq(
+    "Project rolls up reserved pre-production APIs",
+    projectStats.usage.apiPre.reserved,
+    1,
+  );
+  eq(
+    "Project rolls up reserved production APIs",
+    projectStats.usage.apiProd.reserved,
+    1,
+  );
+  eq(
+    "Project shows unassigned flow reservation",
+    projectStats.unassigned.flow,
+    5,
+  );
   const organizationData = {
     capacityEntries: [
       {

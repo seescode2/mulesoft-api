@@ -177,12 +177,12 @@
         `<button class="primary-button" data-action="add-project">+ Add project</button>`,
       ) +
       filters("Projects", data, state) +
-      `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Lifecycle</th><th>Owned APIs</th><th>Consumer links</th><th>Reserved flows</th><th>Covered</th><th>Unassigned</th><th>Pre-prod</th><th>Production</th><th>Overrun</th><th></th></tr></thead><tbody>${rows
+      `<div class="project-list">${rows
         .map((p) => {
           const s = Calc.projectStats(data, p, state.month),
             owned = data.apis.filter(
               (a) => Calc.owner(a, state.month) === p.id,
-            ).length,
+            ),
             consumer = data.apis.reduce(
               (x, a) =>
                 x +
@@ -194,10 +194,29 @@
                 ).length,
               0,
             ),
-            over = Object.values(s.overrun).reduce((a, b) => a + b, 0);
-          return `<tr><td><strong>${esc(p.name)}</strong><span class="subtle">${p.builtIn ? "Built-in · protected" : esc(p.owner || "No owner")}</span></td><td>${badge(title(Calc.lifecycle(p, state.month)))}</td><td>${owned}</td><td>${consumer}</td><td>${n(s.reservation.flow)}</td><td>${n(s.assigned.flow)}</td><td>${n(s.unassigned.flow)}</td><td>${n(s.reservation.apiPre)}</td><td>${n(s.reservation.apiProd)}</td><td>${over ? badge(`△ ${n(over)}`, "warn") : badge("✓", "good")}</td><td><div class="row-actions"><button data-action="edit-project" data-id="${p.id}">Edit</button><button data-action="archive-project" data-id="${p.id}">${Calc.lifecycle(p, state.month) === "archived" ? "Restore" : "Archive"}</button></div></td></tr>`;
+            lifecycle = Calc.lifecycle(p, state.month),
+            capacityCard = (pool) => {
+              const names = {
+                flow: "Flow licenses",
+                apiPre: "API Manager pre-production",
+                apiProd: "API Manager production",
+              };
+              return `<div class="project-capacity"><div class="project-capacity-head"><strong>${names[pool]}</strong>${s.overrun[pool] ? badge(`△ ${n(s.overrun[pool])} over`, "warn") : badge("Covered", "good")}</div><div class="project-stat-row"><span><small>Project reservation</small><strong>${n(s.reservation[pool])}</strong></span><span><small>Used by APIs</small><strong>${n(s.usage[pool].used)}</strong></span><span><small>Reserved by APIs</small><strong>${n(s.usage[pool].reserved)}</strong></span><span><small>Unassigned</small><strong>${n(s.unassigned[pool])}</strong></span></div></div>`;
+            },
+            apiRows = owned
+              .map((a) => {
+                const d = Calc.apiDemand(a, state.month),
+                  env = (e) =>
+                    Timelines.effective(a.environments[e], state.month, {
+                      flowState: "inactive",
+                      apiState: "not-managed",
+                    });
+                return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${env(e).flowState}">${title(env(e).flowState)}</span><br><span class="subtle">AM: ${title(env(e).apiState)}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${a.id}">Edit</button></div></td></tr>`;
+              })
+              .join("");
+          return `<article class="project-card"><header class="project-card-head"><div><div class="project-title-line"><h2>${esc(p.name)}</h2>${badge(title(lifecycle))}</div><p>${p.builtIn ? "Built-in · protected" : esc(p.owner || "No owner")} · ${owned.length} owned API${owned.length === 1 ? "" : "s"} · ${consumer} consumer link${consumer === 1 ? "" : "s"}</p></div><div class="actions"><button class="primary-button" data-action="add-project-api" data-id="${p.id}" ${lifecycle === "archived" ? 'disabled title="Restore this project before adding an API"' : ""}>+ Add API</button><button class="quiet-button" data-action="edit-project" data-id="${p.id}">Edit project</button><button class="quiet-button" data-action="archive-project" data-id="${p.id}">${lifecycle === "archived" ? "Restore" : "Archive"}</button></div></header><div class="project-capacity-grid">${Object.keys(Calc.POOLS).map(capacityCard).join("")}</div><div class="project-apis"><div class="project-apis-head"><h3>APIs in this project</h3><span>Effective ${Timelines.label(state.month)}</span></div>${owned.length ? `<div class="table-wrap"><table><thead><tr><th>API</th><th>Lifecycle</th><th>DEV</th><th>TEST</th><th>PROD</th><th>Used flows</th><th>Reserved flows</th><th>API Manager pre/prod</th><th></th></tr></thead><tbody>${apiRows}</tbody></table></div>` : `<div class="empty project-api-empty">No APIs belong to this project for the selected month.<br><button class="quiet-button" data-action="add-project-api" data-id="${p.id}" ${lifecycle === "archived" ? "disabled" : ""}>+ Add the first API</button></div>`}</div></article>`;
         })
-        .join("")}</tbody></table></div>`
+        .join("") || '<div class="empty">No projects match these filters.</div>'}</div>`
     );
   }
   function capacity(data, state) {
