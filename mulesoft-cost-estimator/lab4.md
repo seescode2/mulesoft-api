@@ -1,14 +1,14 @@
-# Lab 4: Add future capacity and review the forecast
+# Lab 4: Add future capacity and review supply
 
 ## Scenario
 
 Northstar's platform lead takes the one-flow shortfall to procurement. Procurement can place an order for 10 more flow licenses effective April 2027. It also proposes five additional pre-production API Manager licenses for July, but that second request is not approved yet.
 
-This lab shows why **active** and **planned** supply are treated differently and how the Monthly Forecast exposes timing gaps.
+This lab shows why **active** and **planned** supply are treated differently across reporting months.
 
 ## Goal
 
-Record future supply, inspect the January-to-December outlook, and review the committed forecast.
+Record future supply and inspect how it affects purchased capacity in different reporting months.
 
 ## 1. Add the active flow capacity
 
@@ -37,16 +37,13 @@ Active capacity counts as purchased beginning in its effective month.
 
 The entry remains visible in the capacity list but does not count as purchased until its status becomes active.
 
-## 3. Inspect the forecast
+## 3. Inspect capacity by reporting month
 
 1. Set the reporting month to **January 2027**.
-2. Click **Monthly Forecast**.
-3. Read the **Flow licenses** cell for January, then April:
-   - January should show `30 / 5 / 22 / 3` and **Covered**.
-   - April should show `40 / 5 / 22 / 13` and **Covered**.
-4. Notice that the July pre-production planned entry does not increase purchased capacity.
-
-The compact values are purchased, used, reserved, and extra.
+2. Click **Dashboard**.
+3. In the **Flow licenses** card, January should show `30` purchased and `3` extra.
+4. Set the reporting month to **April 2027**. The card should show `40` purchased and `13` extra.
+5. Set the reporting month to **July 2027**. Notice that the planned pre-production entry does not increase purchased capacity.
 
 ## 4. Review purchased capacity
 

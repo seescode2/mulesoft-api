@@ -352,41 +352,6 @@
       }</tbody></table></div>`
     );
   }
-  function forecast(data, state) {
-    const months = Array.from({ length: 12 }, (_, i) =>
-      Timelines.addMonths(state.month, i),
-    );
-    return (
-      head(
-        "Twelve-month outlook",
-        "Monthly Forecast",
-        "Forward view preserves every explicit future override.",
-      ) +
-      `<div class="table-wrap"><table class="forecast-table"><thead><tr><th>Month</th>${Object.values(
-        Calc.POOLS,
-      )
-        .map(
-          (x) =>
-            `<th>${x}<br><span class="subtle">purchased / used / reserved / extra</span></th>`,
-        )
-        .join("")}<th>Status</th></tr></thead><tbody>${months
-        .map((m) => {
-          const o = Calc.organization(data, m, state.mode),
-            short = Object.values(Calc.POOLS).some(
-              (_, i) => o[Object.keys(Calc.POOLS)[i]].shortfall,
-            );
-          return `<tr><td>${Timelines.label(m)}</td>${Object.keys(Calc.POOLS)
-            .map(
-              (p) =>
-                `<td>${n(o[p].purchased)} / ${n(o[p].used)} / ${n(o[p].reserved)} / <strong class="${o[p].extra < 0 ? "negative" : ""}">${n(o[p].extra)}</strong></td>`,
-            )
-            .join(
-              "",
-            )}<td>${short ? badge("⚠ Shortfall", "bad") : badge("✓ Covered", "good")}</td></tr>`;
-        })
-        .join("")}</tbody></table></div>`
-    );
-  }
   function dataView(data) {
     return (
       head(
@@ -408,7 +373,6 @@
         apis,
         projects,
         capacity,
-        forecast,
         data: dataView,
       }[view](data, state);
     },

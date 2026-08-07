@@ -13,7 +13,7 @@ The labs use a separate, cumulative Northstar Outfitters scenario. Start with a 
 1. [Lab 1 — Plan the Digital Checkout project](lab1.md)
 2. [Lab 2 — Add the Store Fulfillment project](lab2.md)
 3. [Lab 3 — Find and respond to a project overrun](lab3.md)
-4. [Lab 4 — Add future capacity and compare forecast modes](lab4.md)
+4. [Lab 4 — Add future capacity and review supply](lab4.md)
 5. [Lab 5 — Record go-live and export the plan](lab5.md)
 
 ## Technical design
@@ -47,7 +47,7 @@ The environment override is used when present; otherwise the shared base flow co
 
 DEV and TEST each consume one pre-production license when managed; PROD consumes one production license. Reserved and used states are independent from flow state. Replica count **never** multiplies API Manager demand. Not-managed environments count zero.
 
-### Capacity and forecasts
+### Capacity
 
 **Active** entries count as purchased capacity. **Planned** entries remain visible but do not count. Capacity begins in its effective month and continues indefinitely; version one has no expiration or negative adjustments. Obsolete entries can be deleted.
 
