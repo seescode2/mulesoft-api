@@ -19,6 +19,16 @@
       .replace(/\b\w/g, (c) => c.toUpperCase());
   const badge = (text, type = "") =>
     `<span class="badge ${type}">${esc(text)}</span>`;
+  const capacityTerms = {
+    used: "Capacity currently consumed by API environments marked used.",
+    reserved:
+      "Capacity held for projects or API environments but not yet in use.",
+    extra:
+      "Capacity remaining after used and reserved demand. A negative value means demand exceeds purchased capacity.",
+  };
+  function capacityLabel(term) {
+    return `<span class="capacity-label">${title(term)} <button type="button" class="info-tip" aria-label="${title(term)}: ${esc(capacityTerms[term])}" data-tooltip="${esc(capacityTerms[term])}">i</button></span>`;
+  }
   function head(eyebrow, h, sub, actions = "") {
     return `<header class="page-head"><div><p class="eyebrow">${eyebrow}</p><h1>${h}</h1><p>${sub}</p></div><div class="actions">${actions}</div></header>`;
   }
@@ -34,10 +44,7 @@
       reservedPct = v.purchased
         ? Math.min(100 - usedPct, (v.reserved / v.purchased) * 100)
         : 0;
-    return `<article class="pool-card ${state}"><div class="pool-head"><h2>${Calc.POOLS[key]}</h2>${badge(v.shortfall ? `⚠ Exceeded by ${n(v.shortfall)}` : state ? "△ Near limit" : "✓ Healthy", v.shortfall ? "bad" : state ? "warn" : "good")}</div><div class="big-number">${n(v.purchased)} <small>purchased</small></div><div class="meter purchased-meter" title="Purchased capacity contains used, reserved, and extra"><span class="used" style="width:${usedPct}%"></span><span class="reserved" style="width:${reservedPct}%"></span></div><div class="capacity-equation">Purchased = Used + Reserved + Extra</div><div class="pool-stats"><div><span>Used</span><strong>${n(v.used)}</strong></div><div><span>Reserved</span><strong>${n(v.reserved)}</strong></div><div><span>Extra</span><strong class="${v.extra < 0 ? "negative" : ""}">${n(v.extra)}</strong></div></div></article>`;
-  }
-  function capacityGlossary() {
-    return `<section class="panel capacity-glossary" aria-labelledby="capacity-terms-heading"><h2 id="capacity-terms-heading">How purchased capacity is divided</h2><p class="panel-sub">Each value applies to the selected month and is calculated separately for each capacity pool.</p><dl><div><dt>Purchased</dt><dd>The active capacity bought by the organization.</dd></div><div><dt>Used</dt><dd>Purchased capacity currently consumed by API environments marked used.</dd></div><div><dt>Reserved</dt><dd>Purchased capacity held for projects or API environments but not yet in use.</dd></div><div><dt>Extra</dt><dd>What remains after used and reserved capacity. A negative value means demand exceeds what was purchased.</dd></div></dl><p class="capacity-formula"><strong>Purchased</strong> = Used + Reserved + Extra</p></section>`;
+    return `<article class="pool-card ${state}"><div class="pool-head"><h2>${Calc.POOLS[key]}</h2>${badge(v.shortfall ? `⚠ Exceeded by ${n(v.shortfall)}` : state ? "△ Near limit" : "✓ Healthy", v.shortfall ? "bad" : state ? "warn" : "good")}</div><div class="big-number">${n(v.purchased)} <small>purchased</small></div><div class="meter purchased-meter" title="Purchased capacity contains used, reserved, and extra"><span class="used" style="width:${usedPct}%"></span><span class="reserved" style="width:${reservedPct}%"></span></div><div class="capacity-equation">Purchased = Used + Reserved + Extra</div><div class="pool-stats"><div>${capacityLabel("used")}<strong>${n(v.used)}</strong></div><div>${capacityLabel("reserved")}<strong>${n(v.reserved)}</strong></div><div>${capacityLabel("extra")}<strong class="${v.extra < 0 ? "negative" : ""}">${n(v.extra)}</strong></div></div></article>`;
   }
   function dashboard(data, state) {
     const o = Calc.organization(data, state.month, state.mode),
@@ -79,7 +86,7 @@
         .map((p) => poolCard(p, o[p]))
         .join(
           "",
-        )}</div>${capacityGlossary()}<div class="dashboard-grid"><div><section class="panel"><h2>Flow demand by environment</h2><p class="panel-sub">Used and reserved flow licenses; replicas are included.</p>${[
+        )}</div><div class="dashboard-grid"><div><section class="panel"><h2>Flow demand by environment</h2><p class="panel-sub">Used and reserved flow licenses; replicas are included.</p>${[
         "dev",
         "test",
         "prod",
