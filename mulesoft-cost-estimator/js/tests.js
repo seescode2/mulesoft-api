@@ -65,6 +65,15 @@
   organization = Calc.organization(organizationData, "2027-01");
   eq("Extra becomes negative when demand exceeds purchases", organization.flow.extra, -2);
   eq("Purchased remains the recorded quantity", organization.flow.purchased, 10);
+  const migrated = Store.migrate({
+    capacityEntries: [
+      { id: "ordered", status: "ordered" },
+      { id: "cancelled", status: "cancelled" },
+      { id: "planned", status: "planned" },
+    ],
+  });
+  eq("Legacy ordered capacity becomes active", migrated.capacityEntries[0].status, "active");
+  eq("Legacy cancelled capacity is removed", migrated.capacityEntries.length, 2);
   let t = [
     { effectiveMonth: "2027-01", value: 1 },
     { effectiveMonth: "2027-06", value: 2 },

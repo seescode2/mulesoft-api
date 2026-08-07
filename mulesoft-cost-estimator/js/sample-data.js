@@ -182,7 +182,7 @@
           "active",
           "Initial production capacity",
         ),
-        cap("cap_aug", "apiPre", 5, m(8), "ordered", "August expansion"),
+        cap("cap_aug", "apiPre", 5, m(8), "active", "August expansion"),
         cap("cap_oct", "apiPre", 10, m(10), "planned", "October forecast"),
         cap("cap_dec", "apiPre", 10, m(12), "planned", "December forecast"),
       ],

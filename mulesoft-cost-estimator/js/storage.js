@@ -40,6 +40,20 @@
       apis: [],
     };
   }
+  function migrate(data) {
+    if (!data || typeof data !== "object") return data;
+    // Normalize fields and statuses removed from earlier planner versions.
+    delete data.strategicReserves;
+    if (Array.isArray(data.capacityEntries)) {
+      data.capacityEntries = data.capacityEntries
+        .filter((entry) => entry.status !== "cancelled")
+        .map((entry) => ({
+          ...entry,
+          status: entry.status === "ordered" ? "active" : entry.status,
+        }));
+    }
+    return data;
+  }
   function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { data: empty(), isNew: true, error: null };
@@ -47,10 +61,7 @@
       const data = JSON.parse(raw);
       if (!data || data.schemaVersion !== SCHEMA)
         throw new Error(`Unsupported schema version. Expected ${SCHEMA}.`);
-      // Strategic reserve was removed from the planner. Drop legacy values while
-      // preserving compatibility with datasets saved by earlier versions.
-      delete data.strategicReserves;
-      return { data, isNew: false, error: null };
+      return { data: migrate(data), isNew: false, error: null };
     } catch (error) {
       return {
         data: empty(),
@@ -69,8 +80,7 @@
   }
   function replace(data) {
     backup();
-    delete data.strategicReserves;
-    save(data);
+    save(migrate(data));
   }
   function reset(storage = localStorage) {
     const fresh = empty();
@@ -101,6 +111,7 @@
     SCHEMA,
     id,
     empty,
+    migrate,
     load,
     save,
     backup,

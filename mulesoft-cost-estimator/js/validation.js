@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
   const pools = ["flow", "apiPre", "apiProd"],
-    capacityStates = ["planned", "ordered", "active", "cancelled"];
+    capacityStates = ["planned", "active"];
   function dataset(data) {
     const errors = [];
     if (!data || typeof data !== "object")

@@ -4,13 +4,13 @@
 
 Northstar's platform lead takes the one-flow shortfall to procurement. Procurement can place an order for 10 more flow licenses effective April 2027. It also proposes five additional pre-production API Manager licenses for July, but that second request is not approved yet.
 
-This lab shows why **ordered** and **planned** supply are treated differently and how the Monthly Forecast exposes timing gaps.
+This lab shows why **active** and **planned** supply are treated differently and how the Monthly Forecast exposes timing gaps.
 
 ## Goal
 
 Record future supply, inspect the January-to-December outlook, and review the committed forecast.
 
-## 1. Add the ordered flow capacity
+## 1. Add the active flow capacity
 
 1. Click **Purchased Capacity** in the left navigation.
 2. Click **+ Add purchase**.
@@ -18,11 +18,11 @@ Record future supply, inspect the January-to-December outlook, and review the co
    - **License pool:** Flow licenses
    - **Quantity:** `10`
    - **Effective month:** April 2027
-   - **Status:** ordered
+   - **Status:** active
    - **Description or notes:** `Approved fulfillment expansion`
 4. Click **Save changes**.
 
-Ordered capacity counts beginning in its effective month.
+Active capacity counts as purchased beginning in its effective month.
 
 ## 2. Record tentative capacity
 
@@ -35,7 +35,7 @@ Ordered capacity counts beginning in its effective month.
    - **Description or notes:** `Tentative pre-production expansion`
 3. Click **Save changes**.
 
-The entry remains visible in the capacity list but does not count as purchased until its status becomes ordered or active.
+The entry remains visible in the capacity list but does not count as purchased until its status becomes active.
 
 ## 3. Inspect the forecast
 

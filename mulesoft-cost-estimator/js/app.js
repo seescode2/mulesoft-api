@@ -269,7 +269,7 @@
         )
         .join(
           "",
-        )}</select></div><div class="field"><label>Quantity</label><input type="number" min="0" name="quantity" required value="${c?.quantity ?? 0}"></div><div class="field"><label>Effective month</label><input type="month" name="month" required value="${c?.effectiveMonth || state.month}"></div><div class="field"><label>Status</label><select name="status">${["planned", "ordered", "active", "cancelled"].map((x) => `<option ${c?.status === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field full"><label>Description or notes</label><textarea name="description">${UI.esc(c?.description || "")}</textarea></div></div>`,
+        )}</select></div><div class="field"><label>Quantity</label><input type="number" min="0" name="quantity" required value="${c?.quantity ?? 0}"></div><div class="field"><label>Effective month</label><input type="month" name="month" required value="${c?.effectiveMonth || state.month}"></div><div class="field"><label>Status</label><select name="status">${["planned", "active"].map((x) => `<option ${c?.status === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field full"><label>Description or notes</label><textarea name="description">${UI.esc(c?.description || "")}</textarea></div></div>`,
       (fd) => {
         if (+fd.get("quantity") < 0)
           return toast("Quantity cannot be negative.");
@@ -420,6 +420,7 @@
       } catch (e) {
         return toast(`Invalid JSON: ${e.message}`);
       }
+      Store.migrate(parsed);
       const errors = Validate.dataset(parsed);
       if (errors.length) {
         showModal(
@@ -485,11 +486,6 @@
         "archive-project": () => archiveProject(id),
         "add-capacity": () => capacityModal(),
         "edit-capacity": () => capacityModal(id),
-        "cancel-capacity": () => {
-          const c = data.capacityEntries.find((x) => x.id === id);
-          c.status = c.status === "cancelled" ? "planned" : "cancelled";
-          persist("Capacity status updated.");
-        },
         "delete-capacity": () => {
           if (
             confirm(

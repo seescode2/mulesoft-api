@@ -14,7 +14,7 @@ Record Digital Checkout's go-live, verify that classification changes do not dup
 
 1. In the reporting-month control, select **April 2027**.
 2. The workspace automatically uses the committed forecast.
-3. Click **Dashboard** and verify that the ordered flow capacity is now included.
+3. Click **Dashboard** and verify that the active flow capacity is now included.
 
 ## 2. Record the API as operational
 
@@ -52,7 +52,7 @@ Your scenario should now contain:
 - Two learner-created projects: Digital Checkout and Store Fulfillment
 - Three APIs: Checkout Experience, Inventory Availability, and Fulfillment Orchestration
 - Base capacity effective January 2027
-- Ordered flow capacity effective April 2027
+- Active flow capacity effective April 2027
 - Planned pre-production capacity effective July 2027
 - Preserved before-and-after history for the Digital Checkout launch
 

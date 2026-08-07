@@ -49,7 +49,7 @@ DEV and TEST each consume one pre-production license when managed; PROD consumes
 
 ### Capacity and forecasts
 
-**Active** and **Ordered** entries count as purchased capacity. Planned and cancelled entries do not count. Capacity begins in its effective month and continues indefinitely; version one has no expiration or negative adjustments.
+**Active** entries count as purchased capacity. **Planned** entries remain visible but do not count. Capacity begins in its effective month and continues indefinitely; version one has no expiration or negative adjustments. Obsolete entries can be deleted.
 
 `extra = purchased − used − reserved`
 

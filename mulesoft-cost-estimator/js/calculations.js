@@ -126,12 +126,9 @@
           (c) =>
             c.pool === pool &&
             c.effectiveMonth <= month &&
-            c.status !== "cancelled",
+            c.status === "active",
         )
-        .forEach((c) => {
-          if (["active", "ordered"].includes(c.status))
-            purchased += c.quantity;
-        });
+        .forEach((c) => (purchased += c.quantity));
       const reserved =
         Math.max(
           0,
@@ -155,7 +152,7 @@
   }
   function futureCapacity(data, month) {
     return data.capacityEntries
-      .filter((c) => c.effectiveMonth > month && c.status !== "cancelled")
+      .filter((c) => c.effectiveMonth > month)
       .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth));
   }
   global.Calc = {
