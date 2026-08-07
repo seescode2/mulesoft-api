@@ -33,6 +33,13 @@
         : 0;
     return `<article class="pool-card ${state}"><div class="pool-head"><h2>${Calc.POOLS[key]}</h2>${badge(v.shortfall ? `⚠ Shortfall ${n(v.shortfall)}` : state ? "△ Near limit" : "✓ Healthy", v.shortfall ? "bad" : state ? "warn" : "good")}</div><div class="big-number">${n(v.free)} <small>freely available</small></div><div class="meter" title="${Math.round(pct)}% committed"><span style="width:${pct}%"></span></div><div class="pool-stats"><div><span>Owned</span><strong>${n(v.owned)}</strong></div><div><span>Used</span><strong>${n(v.used)}</strong></div><div><span>Reserved</span><strong>${n(v.reserved)}</strong></div><div><span>Strategic</span><strong>${n(v.reserve)}</strong></div><div><span>Unplanned</span><strong>${n(v.unplanned)}</strong></div><div><span>Uncertain</span><strong>${n(v.uncertain)}</strong></div></div></article>`;
   }
+  function capacityGlossary(mode) {
+    const uncertainTreatment =
+      mode === "planning"
+        ? "Included in Owned in this planning view, but still identified as provisional."
+        : "Shown for awareness, but not included in Owned in this committed view.";
+    return `<section class="panel capacity-glossary" aria-labelledby="capacity-terms-heading"><h2 id="capacity-terms-heading">What the capacity numbers mean</h2><p class="panel-sub">Each value applies to the selected month and is calculated separately for each capacity pool.</p><dl><div><dt>Owned</dt><dd>Capacity available to the organization from active or ordered entries.</dd></div><div><dt>Used</dt><dd>Capacity currently assigned to API environments marked used.</dd></div><div><dt>Reserved</dt><dd>Capacity held for projects or API environments but not yet in use.</dd></div><div><dt>Strategic</dt><dd>A protected organization buffer that cannot be assigned or consumed automatically.</dd></div><div><dt>Unplanned</dt><dd>Used or reserved API demand not covered by its owning project's reservation. It is already included in demand, so do not subtract it again.</dd></div><div><dt>Uncertain</dt><dd>Planned capacity effective by this month that is not yet active or ordered. ${uncertainTreatment}</dd></div></dl><p class="capacity-formula"><strong>Freely available</strong> = Owned − Used − Reserved − Strategic</p></section>`;
+  }
   function dashboard(data, state) {
     const o = Calc.organization(data, state.month, state.mode),
       counts = {};
@@ -77,7 +84,7 @@
         .map((p) => poolCard(p, o[p]))
         .join(
           "",
-        )}</div><div class="dashboard-grid"><div><section class="panel"><h2>Flow demand by environment</h2><p class="panel-sub">Used and reserved flow licenses; replicas are included.</p>${[
+        )}</div>${capacityGlossary(state.mode)}<div class="dashboard-grid"><div><section class="panel"><h2>Flow demand by environment</h2><p class="panel-sub">Used and reserved flow licenses; replicas are included.</p>${[
         "dev",
         "test",
         "prod",
