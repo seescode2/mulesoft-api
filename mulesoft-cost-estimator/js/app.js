@@ -174,7 +174,7 @@
   function envFields(api, env) {
     const c = api
       ? Timelines.effective(api.environments[env], state.month, {})
-      : {};
+      : { flowState: "reserved", apiState: "reserved" };
     return `<div class="env-box"><h3>${env.toUpperCase()}</h3><div class="field"><label>Flow state</label><select name="${env}Flow">${["inactive", "reserved", "used"].map((x) => `<option ${c.flowState === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field"><label>API Manager</label><select name="${env}Api">${["not-managed", "reserved", "used"].map((x) => `<option ${c.apiState === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field"><label>Replicas</label><input type="number" min="0" name="${env}Replicas" value="${c.replicas ?? (env === "prod" ? 2 : 1)}"></div><div class="field"><label>Flow override <span class="subtle">optional</span></label><input type="number" min="0" name="${env}Override" value="${c.flowOverride ?? ""}"></div></div>`;
   }
   function autoAssign(projectId, month) {
@@ -209,7 +209,7 @@
         !api && projectId
           ? data.projects.find((project) => project.id === projectId)
           : null,
-      base = api ? Timelines.effective(api.baseFlows, state.month, 0) : 0;
+      base = api ? Timelines.effective(api.baseFlows, state.month, 0) : 2;
     showModal(
       api ? "Edit API" : "Add API",
       "Effective-dated API",
