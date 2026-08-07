@@ -13,7 +13,7 @@ Record Digital Checkout's go-live, verify that classification changes do not dup
 ## 1. Move to the go-live month
 
 1. In the reporting-month control, select **April 2027**.
-2. Confirm that **Committed** is selected in the top-right mode switch.
+2. The workspace automatically uses the committed forecast.
 3. Click **Dashboard** and verify that the ordered flow capacity is now included.
 
 ## 2. Record the API as operational
@@ -27,7 +27,7 @@ Record Digital Checkout's go-live, verify that classification changes do not dup
 7. In PROD, change **Flow state** from **reserved** to **used** and **API Manager** from **reserved** to **used**. Keep 3 replicas.
 8. Leave the base flow count and overrides unchanged.
 9. Click **Save changes**.
-10. The planner will explain that reserved-to-used changes classification without increasing allocation. Click **Save anyway**.
+10. The planner will explain that reserved-to-used changes classification without increasing coverage. Click **Save anyway**.
 
 ## 3. Verify January history and April state
 
@@ -35,7 +35,7 @@ Record Digital Checkout's go-live, verify that classification changes do not dup
 2. Change the reporting month back to **January 2027**.
 3. Confirm that the same API is still **In Development**, with 2 used and 10 reserved flows.
 4. Change the reporting month to **April 2027** again.
-5. Click **Projects** and confirm that Digital Checkout still has 12 allocated flows. A classification change did not consume the reservation twice.
+5. Click **Projects** and confirm that Digital Checkout still has 12 covered flows. A classification change did not consume the reservation twice.
 
 ## 4. Export the completed scenario
 
@@ -43,7 +43,7 @@ Record Digital Checkout's go-live, verify that classification changes do not dup
 2. Under **Export complete dataset**, click **Export JSON**.
 3. Save the downloaded `mulesoft-capacity-2027-04.json` file in the location your browser offers.
 
-The export contains capacity entries, reserves, projects, APIs, allocations, and every effective-dated January and April value. It can be validated and restored later through **Choose JSON file**.
+The export contains capacity entries, reserves, projects, APIs, coverages, and every effective-dated January and April value. It can be validated and restored later through **Choose JSON file**.
 
 ## Final review
 

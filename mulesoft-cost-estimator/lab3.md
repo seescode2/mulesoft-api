@@ -4,7 +4,7 @@
 
 Store Fulfillment's team learns that publishing inventory is not enough. It must also orchestrate store pickup, shipment routing, and exception handling. The proposed **Fulfillment Orchestration API** needs more flow capacity than the project has left.
 
-This lab deliberately creates an overrun. You will use the warnings to distinguish API demand, API allocation, project reservation, and organization capacity.
+This lab deliberately creates an overrun. You will use the warnings to distinguish API demand, automatic reservation coverage, project reservation, and organization capacity.
 
 ## Goal
 
@@ -35,20 +35,11 @@ The new API demands 8 flows: `2 DEV + 2 TEST + 4 PROD`.
 2. Find **Store Fulfillment**.
 3. Its APIs now demand 13 flows in total, but the project reserves only 10. They also exceed the API Manager reservation by 2 pre-production licenses and 1 production license. The **Overrun** column sums the pool overruns, so it should display a warning totaling `6` (`3 + 2 + 1`).
 
-This warning is visible even before the new API is allocated; creating API demand does not silently enlarge a project reservation.
+This warning is visible even before the new API is covered; creating API demand does not silently enlarge a project reservation.
 
-## 3. Allocate only what remains
+## 3. Review the uncovered demand
 
-1. Click **APIs**.
-2. In the Fulfillment Orchestration API row, click **Allocate**.
-3. Review the table. The suggested additional flow allocation is `5`, because that is all of Store Fulfillment's unassigned flow reservation.
-4. Set or retain these **New allocation** values:
-   - **Flow licenses:** `5`
-   - **API Manager pre-production:** `0`
-   - **API Manager production:** `0`
-5. Click **Confirm allocation**.
-
-The API still has 3 uncovered flows and uncovered API Manager demand. Partial allocation records the decision without pretending that the project reservation is larger.
+The planner automatically uses the remaining project reservation. The API still has uncovered demand until the reservation is increased.
 
 ## 4. Expand the project reservation
 
@@ -64,20 +55,6 @@ The steering group approves the project's full requirement, even though organiza
 5. Leave the other fields unchanged and click **Save changes**.
 6. If a **Save this change?** advisory appears, review it and click **Save anyway**.
 
-## 5. Finish the API allocation
+## 5. Verify recalculated coverage
 
-1. Click **APIs**.
-2. In the Fulfillment Orchestration API row, click **Allocate**.
-3. Set **New allocation** to:
-   - **Flow licenses:** `8`
-   - **API Manager pre-production:** `2`
-   - **API Manager production:** `1`
-4. Click **Confirm allocation**.
-
-## Check your work
-
-1. Click **Projects**. Store Fulfillment should show 13 reserved flows, 13 allocated, 0 unassigned, and no overrun.
-2. Click **APIs**. Both Store Fulfillment APIs should have a check mark in **Warnings**.
-3. Click **Dashboard**. **Flow licenses** should report a shortfall of 1: 30 owned minus 27 project/API demand minus 4 protected reserve.
-
-You resolved the project-level overrun but exposed an organization-level supply gap. Continue with [Lab 4](lab4.md).
+Saving the larger project reservation automatically covers the remaining API demand.

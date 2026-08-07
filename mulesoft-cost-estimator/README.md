@@ -1,6 +1,6 @@
 # MuleSoft Capacity Planner
 
-A browser-only planning workspace for tracking MuleSoft flow licenses, API Manager capacity, project reservations, API allocations, usage, and strategic reserve month by month. It intentionally does **not** calculate monetary cost.
+A browser-only planning workspace for tracking MuleSoft flow licenses, API Manager capacity, project reservations, API demand, usage, and strategic reserve month by month. It intentionally does **not** calculate monetary cost.
 
 ## Run it
 
@@ -30,7 +30,7 @@ The application uses semantic HTML, responsive CSS, and plain JavaScript. There 
 - `js/calculations.js` — API, project, and organization calculations.
 - `js/sample-data.js` — optional, clearly identified 2027 scenario.
 - `js/ui.js` — screen and table rendering.
-- `js/app.js` — navigation, forms, CRUD, archive, allocation, import/export, and event handling.
+- `js/app.js` — navigation, forms, CRUD, archive, automatic reservation coverage, import/export, and event handling.
 - `tests.html` / `js/tests.js` — dependency-free storage, timeline, and calculation test harness.
 
 ## Counting rules
@@ -49,19 +49,19 @@ DEV and TEST each consume one pre-production license when managed; PROD consumes
 
 ### Capacity and forecasts
 
-Committed mode includes **Active** and **Ordered** entries. Planning mode also includes visually uncertain **Planned** entries. Cancelled entries never count. Capacity begins in its effective month and continues indefinitely; version one has no expiration or negative adjustments.
+The planner always uses the committed forecast: **Active** and **Ordered** entries count as owned capacity. **Planned** entries remain visible as uncertain future supply but do not count; cancelled entries never count. Capacity begins in its effective month and continues indefinitely; version one has no expiration or negative adjustments.
 
 `freely available = owned − used − reserved − strategic reserve`
 
 `shortfall = max(0, used + reserved + strategic reserve − owned)`
 
-Strategic reserve is protected separately for every pool. It is never consumed automatically. An explicit effective-dated reduction releases it to the organization pool, but does not allocate it to a project or API.
+Strategic reserve is protected separately for every pool. It is never consumed automatically. An explicit effective-dated reduction releases it to the organization pool, but does not assign it to a project or API.
 
-## Projects, APIs, and allocation
+## Projects, APIs, and reservation coverage
 
-Every active API has one effective-dated owner. The protected **Shared Platform / Unassigned** project is the fallback. Consumer projects are effective-dated informational relationships only and never duplicate demand. Project reservations are pool-level and persist until explicitly changed. API allocation is explicit and may be partial; uncovered API demand remains unplanned organization demand. Changing reserved configuration to used changes classification without duplicating allocation.
+Every active API has one effective-dated owner. The protected **Shared Platform / Unassigned** project is the fallback. Consumer projects are effective-dated informational relationships only and never duplicate demand. Project reservations are pool-level and persist until explicitly changed. API demand is covered automatically from its owning project’s available reservation whenever a project or API is saved. Coverage may be partial; demand beyond the project reservation remains unplanned organization demand. Changing reserved configuration to used changes classification without duplicating demand.
 
-Lifecycle values are descriptive. They never alter demand automatically. Archive workflows are the exception: API archive adds inactive/not-managed environment records from its effective month, while preserving all history. Project archive releases unassigned reservation but preserves allocations for remaining APIs.
+Lifecycle values are descriptive. They never alter demand automatically. Archive workflows are the exception: API archive adds inactive/not-managed environment records from its effective month, while preserving all history. Project archive releases unassigned reservation but preserves coverage for remaining APIs.
 
 ## Effective-dated timelines
 
@@ -69,7 +69,7 @@ Every timeline record has `effectiveMonth` (`YYYY-MM`) and `value`. A value appl
 
 ## Import, export, and recovery
 
-Export downloads the complete dataset: schema and metadata, capacity, reserve timelines, projects and reservations, APIs and lifecycle/environment/owner/allocation timelines, consumers, and archive metadata. Import validates structure, unique IDs, references, months, and timeline shape, then presents a count summary and explicit replacement confirmation. Immediately before replacement, the prior raw dataset is copied to `mulesoft-cost-estimator-data-import-backup`. Invalid JSON never replaces current data. Reset requires typing `RESET`.
+Export downloads the complete dataset: schema and metadata, capacity, reserve timelines, projects and reservations, APIs and lifecycle/environment/owner/allocation timelines (the legacy allocation records remain in the unchanged schema for backward-compatible imports and exports), consumers, and archive metadata. Import validates structure, unique IDs, references, months, and timeline shape, then presents a count summary and explicit replacement confirmation. Immediately before replacement, the prior raw dataset is copied to `mulesoft-cost-estimator-data-import-backup`. Invalid JSON never replaces current data. Reset requires typing `RESET`.
 
 ## Version-one limitations
 
