@@ -29,11 +29,6 @@
         x.classList.toggle("active", x.dataset.view === state.view),
       );
     $("#selected-month").value = state.month;
-    document
-      .querySelectorAll("[data-mode]")
-      .forEach((x) =>
-        x.classList.toggle("active", x.dataset.mode === state.mode),
-      );
   }
   function toast(msg) {
     const e = document.createElement("div");
@@ -128,6 +123,7 @@
           x.lifecycle = Timelines.upsert(x.lifecycle, month, life);
           x.reservations = Timelines.upsert(x.reservations, month, vals);
           if (!p) data.projects.push(x);
+          autoAssign(x.id, month);
           close();
           persist(p ? "Project updated." : "Project created.");
         });
@@ -138,8 +134,30 @@
     const c = api
       ? Timelines.effective(api.environments[env], state.month, {})
       : {};
-    return `<div class="env-box"><h3>${env.toUpperCase()}</h3><div class="field"><label>Flow state</label><select name="${env}Flow">${["inactive", "reserved", "used"].map((x) => `<option ${c.flowState === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field"><label>API Manager</label><select name="${env}Api">${["not-managed", "reserved", "used"].map((x) => `<option ${c.apiState === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field"><label>Replicas</label><input type="number" min="0" name="${env}Replicas" value="${c.replicas ?? 1}"></div><div class="field"><label>Flow override <span class="subtle">optional</span></label><input type="number" min="0" name="${env}Override" value="${c.flowOverride ?? ""}"></div></div>`;
+    return `<div class="env-box"><h3>${env.toUpperCase()}</h3><div class="field"><label>Flow state</label><select name="${env}Flow">${["inactive", "reserved", "used"].map((x) => `<option ${c.flowState === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field"><label>API Manager</label><select name="${env}Api">${["not-managed", "reserved", "used"].map((x) => `<option ${c.apiState === x ? "selected" : ""}>${x}</option>`).join("")}</select></div><div class="field"><label>Replicas</label><input type="number" min="0" name="${env}Replicas" value="${c.replicas ?? (env === "prod" ? 2 : 1)}"></div><div class="field"><label>Flow override <span class="subtle">optional</span></label><input type="number" min="0" name="${env}Override" value="${c.flowOverride ?? ""}"></div></div>`;
   }
+  function autoAssign(projectId, month) {
+    const project = data.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const remaining = { ...Calc.projectReservation(project, month) };
+    data.apis
+      .filter((api) => Calc.owner(api, month) === projectId)
+      .forEach((api) => {
+        const demand = Calc.apiDemand(api, month), values = {};
+        Object.keys(Calc.POOLS).forEach((pool) => {
+          values[pool] = Math.min(
+            demand[pool].used + demand[pool].reserved,
+            Number(remaining[pool] || 0),
+          );
+          remaining[pool] = Math.max(
+            0,
+            Number(remaining[pool] || 0) - values[pool],
+          );
+        });
+        api.allocations = Timelines.upsert(api.allocations, month, values);
+      });
+  }
+
   function apiModal(id) {
     const api = id ? data.apis.find((x) => x.id === id) : null,
       life = api ? Calc.lifecycle(api, state.month) : "planned",
@@ -171,7 +189,7 @@
           : [];
         if (api && owner !== fd.get("owner"))
           notes.push(
-            "Changing the owning project does not silently transfer reservation allocations. Existing allocations will remain recorded until explicitly changed.",
+            "Changing the owning project recalculates reservation coverage for both projects.",
           );
         ["dev", "test", "prod"].forEach((e) => {
           if (api) {
@@ -186,7 +204,7 @@
               ["used", "reserved"].includes(next.flowState)
             )
               notes.push(
-                `${e.toUpperCase()} flow classification changes from ${old.flowState} to ${next.flowState}; total allocation is not increased.`,
+                `${e.toUpperCase()} flow classification changes from ${old.flowState} to ${next.flowState}; total demand is unchanged.`,
               );
           }
         });
@@ -229,6 +247,8 @@
               })),
           );
           if (!api) data.apis.push(x);
+          autoAssign(owner, month);
+          autoAssign(fd.get("owner"), month);
           close();
           persist(api ? "API timeline updated." : "API created.");
         });
@@ -289,7 +309,7 @@
         )
         .join(
           "",
-        )}</div><div class="advisory">Reserve reductions return capacity to the freely available pool. They do not allocate capacity to any project or API.</div>`,
+        )}</div><div class="advisory">Reserve reductions return capacity to the freely available pool. They do not assign capacity to any project or API.</div>`,
       (fd) => {
         const month = fd.get("month"),
           notes = [];
@@ -324,56 +344,6 @@
           persist("Strategic reserve timeline updated.");
         });
       },
-    );
-  }
-  function allocationModal(id) {
-    const api = data.apis.find((x) => x.id === id),
-      d = Calc.apiDemand(api, state.month),
-      project = data.projects.find(
-        (p) => p.id === Calc.owner(api, state.month),
-      ),
-      s = Calc.projectStats(data, project, state.month),
-      a = Calc.allocation(api, state.month);
-    showModal(
-      `Allocate ${api.name}`,
-      "Explicit project allocation",
-      `<p>Draw from <strong>${UI.esc(project.name)}</strong>. Partial allocation is allowed and requires confirmation.</p><div class="table-wrap"><table><thead><tr><th>Pool</th><th>API demand</th><th>Already allocated</th><th>Remaining reservation</th><th>Suggested additional</th><th>New allocation</th><th>Uncovered</th></tr></thead><tbody>${Object.entries(
-        Calc.POOLS,
-      )
-        .map(([p, l]) => {
-          const demand = d[p].used + d[p].reserved,
-            remaining = s.unassigned[p],
-            suggest = Math.min(Math.max(0, demand - a[p]), remaining);
-          return `<tr><td>${l}</td><td>${demand}</td><td>${a[p]}</td><td>${remaining}</td><td>${suggest}</td><td><input type="number" min="0" max="${demand}" name="${p}" value="${Math.min(demand, a[p] + suggest)}" style="width:75px"></td><td>${Math.max(0, demand - a[p] - suggest)}</td></tr>`;
-        })
-        .join("")}</tbody></table></div>`,
-      (fd) => {
-        const vals = {
-            flow: +fd.get("flow"),
-            apiPre: +fd.get("apiPre"),
-            apiProd: +fd.get("apiProd"),
-          },
-          notes = [];
-        Object.keys(vals).forEach((p) => {
-          const demand = d[p].used + d[p].reserved;
-          if (vals[p] > demand) return;
-          if (vals[p] > s.reservation[p])
-            notes.push(
-              `${Calc.POOLS[p]} allocation exceeds the project reservation by ${vals[p] - s.reservation[p]}. The excess remains organization-wide demand.`,
-            );
-        });
-        advisory(notes, () => {
-          api.allocations = Timelines.upsert(
-            api.allocations,
-            state.month,
-            vals,
-          );
-          api.updatedAt = new Date().toISOString();
-          close();
-          persist("API allocation confirmed.");
-        });
-      },
-      "Confirm allocation",
     );
   }
   function archiveApi(id) {
@@ -426,6 +396,7 @@
               reason: fd.get("reason"),
               notes: fd.get("notes"),
             };
+            autoAssign(Calc.owner(api, month), month);
             close();
             persist("API archived; history preserved.");
           },
@@ -544,7 +515,6 @@
       ({
         "add-api": () => apiModal(),
         "edit-api": () => apiModal(id),
-        "allocate-api": () => allocationModal(id),
         "archive-api": () => archiveApi(id),
         "delete-api": () => {
           const a = data.apis.find((x) => x.id === id);
@@ -554,7 +524,9 @@
             ) &&
             prompt("Type DELETE to confirm") === "DELETE"
           ) {
+            const projectId = Calc.owner(a, state.month);
             data.apis = data.apis.filter((x) => x.id !== id);
+            autoAssign(projectId, state.month);
             persist("API permanently deleted.");
           }
         },
@@ -631,13 +603,6 @@
     state.month = Timelines.currentMonth();
     render();
   };
-  document.querySelectorAll("[data-mode]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        state.mode = b.dataset.mode;
-        render();
-      }),
-  );
   $("#import-file").onchange = (e) => {
     if (e.target.files[0]) importFile(e.target.files[0]);
     e.target.value = "";
@@ -655,5 +620,6 @@
     $("#alert-region").innerHTML =
       `<div class="advisory"><strong>Stored data could not be read.</strong> ${UI.esc(loaded.error.message)} The corrupt value was not overwritten. Use Import / Export to reset or replace it.</div>`;
   if (!loaded.error) Store.save(data);
+
   render();
 })();

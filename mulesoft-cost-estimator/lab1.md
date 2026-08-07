@@ -6,7 +6,7 @@ Northstar Outfitters is a regional outdoor retailer whose online checkout still 
 
 The company has approved a **Digital Checkout** project. Its first MuleSoft API, **Checkout Experience API**, will validate checkout requests now and later support web and mobile channels. Development begins in January 2027. The team expects one DEV replica, two TEST replicas, and three PROD replicas. DEV work has started; TEST and PROD capacity is reserved for later phases.
 
-In this lab you will start with a clean workspace, record the organization's existing licenses and strategic reserve, create one learner project, add its first API, and allocate the project's reservation to that API.
+In this lab you will start with a clean workspace, record the organization's existing licenses and strategic reserve, create one learner project, add its first API; its reservation is applied automatically to that API.
 
 > The planner always retains its protected **Shared Platform / Unassigned** project. “One project” in this lab means one project created by you.
 
@@ -78,7 +78,7 @@ Northstar's architecture team keeps capacity aside for incidents and small unpla
    - **Reserved production:** `1`
 4. Click **Save changes**.
 
-The Projects table should show Digital Checkout with 14 reserved flows and no allocated flows yet.
+The Projects table should show Digital Checkout with 14 reserved flows and no covered flows yet.
 
 ## 5. Add the Checkout Experience API
 
@@ -110,26 +110,7 @@ The Projects table should show Digital Checkout with 14 reserved flows and no al
 
 The API uses 2 DEV flows and reserves 10 more: `(2 × 2 TEST replicas) + (2 × 3 PROD replicas)`. It also needs two pre-production API Manager licenses and one production license.
 
-## 6. Allocate the reservation to the API
+## 6. Verify automatic coverage
 
-1. Find **Checkout Experience API** in the APIs table.
-2. In its row, click **Allocate**.
-3. Confirm that **New allocation** contains:
-   - **Flow licenses:** `12`
-   - **API Manager pre-production:** `2`
-   - **API Manager production:** `1`
-4. Click **Confirm allocation**.
-
-## Check your work
-
-1. Click **Projects**. Digital Checkout should show:
-   - **Reserved flows:** 14
-   - **Allocated:** 12
-   - **Unassigned:** 2
-   - **Pre-prod:** 2
-   - **Production:** 1
-   - **Overrun:** a check mark
-2. Click **APIs**. Checkout Experience API should show 2 used flows, 10 reserved flows, `2 / 1` API Manager demand, and a check mark in **Warnings**.
-3. Click **Dashboard**. The organization should still have positive freely available capacity in all three pools.
-
-You now have a single-project baseline. Continue with [Lab 2](lab2.md).
+1. Return to **Projects**.
+2. Confirm that the API demand is covered automatically from Digital Checkout’s reservation. No separate action is required.

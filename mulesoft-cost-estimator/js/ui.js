@@ -153,7 +153,7 @@
                 }),
               alloc = Calc.allocation(a, state.month),
               unplanned = d.totalFlows > alloc.flow;
-            return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${esc(project(Calc.owner(a, state.month)))}</td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${env(e).flowState}">${title(env(e).flowState)}</span><br><span class="subtle">AM: ${title(env(e).apiState)}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td>${a.consumers.filter((c) => c.startMonth <= state.month && (!c.endMonth || c.endMonth >= state.month)).length}</td><td>${unplanned ? badge("△ Unplanned", "warn") : badge("✓", "good")}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${a.id}">Edit</button><button data-action="allocate-api" data-id="${a.id}">Allocate</button><button data-action="archive-api" data-id="${a.id}">${Calc.lifecycle(a, state.month) === "archived" ? "Restore" : "Archive"}</button><button data-action="delete-api" data-id="${a.id}">Delete</button></div></td></tr>`;
+            return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${esc(project(Calc.owner(a, state.month)))}</td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${env(e).flowState}">${title(env(e).flowState)}</span><br><span class="subtle">AM: ${title(env(e).apiState)}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td>${a.consumers.filter((c) => c.startMonth <= state.month && (!c.endMonth || c.endMonth >= state.month)).length}</td><td>${unplanned ? badge("△ Unplanned", "warn") : badge("✓", "good")}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${a.id}">Edit</button><button data-action="archive-api" data-id="${a.id}">${Calc.lifecycle(a, state.month) === "archived" ? "Restore" : "Archive"}</button><button data-action="delete-api" data-id="${a.id}">Delete</button></div></td></tr>`;
           })
           .join("") ||
         `<tr><td colspan="12"><div class="empty">No APIs match these filters.</div></td></tr>`
@@ -177,7 +177,7 @@
         `<button class="primary-button" data-action="add-project">+ Add project</button>`,
       ) +
       filters("Projects", data, state) +
-      `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Lifecycle</th><th>Owned APIs</th><th>Consumer links</th><th>Reserved flows</th><th>Allocated</th><th>Unassigned</th><th>Pre-prod</th><th>Production</th><th>Overrun</th><th></th></tr></thead><tbody>${rows
+      `<div class="table-wrap"><table><thead><tr><th>Project</th><th>Lifecycle</th><th>Owned APIs</th><th>Consumer links</th><th>Reserved flows</th><th>Covered</th><th>Unassigned</th><th>Pre-prod</th><th>Production</th><th>Overrun</th><th></th></tr></thead><tbody>${rows
         .map((p) => {
           const s = Calc.projectStats(data, p, state.month),
             owned = data.apis.filter(
@@ -208,15 +208,15 @@
         "Capacity is independent from project and API demand.",
         `<button class="primary-button" data-action="add-capacity">+ Add capacity</button>`,
       ) +
-      `<div class="table-wrap"><table><thead><tr><th>License pool</th><th>Quantity</th><th>Effective month</th><th>Status</th><th>Description</th><th>Committed</th><th>Planning</th><th></th></tr></thead><tbody>${
+      `<div class="table-wrap"><table><thead><tr><th>License pool</th><th>Quantity</th><th>Effective month</th><th>Status</th><th>Description</th><th>Included</th><th></th></tr></thead><tbody>${
         data.capacityEntries
           .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth))
           .map(
             (c) =>
-              `<tr><td><strong>${Calc.POOLS[c.pool]}</strong></td><td>${n(c.quantity)}</td><td>${Timelines.label(c.effectiveMonth)}</td><td>${badge(title(c.status), c.status === "planned" ? "warn" : "")}</td><td>${esc(c.description || "—")}</td><td>${["active", "ordered"].includes(c.status) ? "✓ Yes" : "— No"}</td><td>${c.status !== "cancelled" ? "✓ Yes" : "— No"}</td><td><div class="row-actions"><button data-action="edit-capacity" data-id="${c.id}">Edit</button><button data-action="cancel-capacity" data-id="${c.id}">${c.status === "cancelled" ? "Restore" : "Cancel"}</button><button data-action="delete-capacity" data-id="${c.id}">Delete</button></div></td></tr>`,
+              `<tr><td><strong>${Calc.POOLS[c.pool]}</strong></td><td>${n(c.quantity)}</td><td>${Timelines.label(c.effectiveMonth)}</td><td>${badge(title(c.status), c.status === "planned" ? "warn" : "")}</td><td>${esc(c.description || "—")}</td><td>${["active", "ordered"].includes(c.status) ? "✓ Yes" : "— No"}</td><td><div class="row-actions"><button data-action="edit-capacity" data-id="${c.id}">Edit</button><button data-action="cancel-capacity" data-id="${c.id}">${c.status === "cancelled" ? "Restore" : "Cancel"}</button><button data-action="delete-capacity" data-id="${c.id}">Delete</button></div></td></tr>`,
           )
           .join("") ||
-        `<tr><td colspan="8"><div class="empty">No capacity entries yet.</div></td></tr>`
+        `<tr><td colspan="7"><div class="empty">No capacity entries yet.</div></td></tr>`
       }</tbody></table></div>`
     );
   }
@@ -302,7 +302,7 @@
         "Import / Export",
         "Your complete normalized dataset remains under your control.",
       ) +
-      `<div class="data-actions"><article class="action-tile"><h3>Export complete dataset</h3><p>Download schema, metadata, timelines, relationships, allocations, and archive records.</p><button class="primary-button" data-action="export">Export JSON</button></article><article class="action-tile"><h3>Import and replace</h3><p>Validate a JSON file, preview its contents, then create a local backup before replacement.</p><button class="quiet-button" data-action="import">Choose JSON file</button></article><article class="action-tile"><h3>Sample planning scenario</h3><p>Load the clearly identified 2027 example with projects, overruns, reserve, and future purchases.</p><button class="quiet-button" data-action="sample">Load sample data</button></article><article class="action-tile"><h3>Reset local workspace</h3><p>Permanently remove all local data and backups. The required Shared Platform / Unassigned project will be recreated.</p><button class="danger-button" data-action="reset">Reset all data</button></article></div><section class="panel" style="margin-top:16px"><h2>Dataset summary</h2><p class="panel-sub">Schema ${data.schemaVersion} · localStorage key <code>${Store.KEY}</code></p><div class="kpi-row"><div class="stat-card"><strong>${data.capacityEntries.length}</strong><span>Capacity entries</span></div><div class="stat-card"><strong>${data.projects.length}</strong><span>Projects</span></div><div class="stat-card"><strong>${data.apis.length}</strong><span>APIs</span></div><div class="stat-card"><strong>${new Blob([JSON.stringify(data)]).size.toLocaleString()}</strong><span>Bytes</span></div></div></section>`
+      `<div class="data-actions"><article class="action-tile"><h3>Export complete dataset</h3><p>Download schema, metadata, timelines, relationships, reservation coverage, and archive records.</p><button class="primary-button" data-action="export">Export JSON</button></article><article class="action-tile"><h3>Import and replace</h3><p>Validate a JSON file, preview its contents, then create a local backup before replacement.</p><button class="quiet-button" data-action="import">Choose JSON file</button></article><article class="action-tile"><h3>Sample planning scenario</h3><p>Load the clearly identified 2027 example with projects, overruns, reserve, and future purchases.</p><button class="quiet-button" data-action="sample">Load sample data</button></article><article class="action-tile"><h3>Reset local workspace</h3><p>Permanently remove all local data and backups. The required Shared Platform / Unassigned project will be recreated.</p><button class="danger-button" data-action="reset">Reset all data</button></article></div><section class="panel" style="margin-top:16px"><h2>Dataset summary</h2><p class="panel-sub">Schema ${data.schemaVersion} · localStorage key <code>${Store.KEY}</code></p><div class="kpi-row"><div class="stat-card"><strong>${data.capacityEntries.length}</strong><span>Capacity entries</span></div><div class="stat-card"><strong>${data.projects.length}</strong><span>Projects</span></div><div class="stat-card"><strong>${data.apis.length}</strong><span>APIs</span></div><div class="stat-card"><strong>${new Blob([JSON.stringify(data)]).size.toLocaleString()}</strong><span>Bytes</span></div></div></section>`
     );
   }
   global.UI = {
