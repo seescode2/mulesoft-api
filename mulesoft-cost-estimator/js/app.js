@@ -24,6 +24,13 @@
     const target = $(`#view-${state.view}`);
     target.classList.add("active");
     target.innerHTML = UI.render(state.view, data, state);
+    const projectToggle = $("#toggle-projects");
+    if (projectToggle) {
+      projectToggle.addEventListener("click", toggleProjects);
+      target
+        .querySelectorAll(".project-card")
+        .forEach((card) => card.addEventListener("toggle", updateProjectToggle));
+    }
     document
       .querySelectorAll(".nav-item")
       .forEach((x) =>
@@ -38,6 +45,20 @@
     e.textContent = msg;
     document.body.append(e);
     setTimeout(() => e.remove(), 2600);
+  }
+  function updateProjectToggle() {
+    const button = $("#toggle-projects");
+    if (!button) return;
+    const cards = [...document.querySelectorAll(".project-card")],
+      allExpanded = cards.length > 0 && cards.every((card) => card.open);
+    button.textContent = allExpanded ? "Collapse all" : "Expand all";
+    button.setAttribute("aria-expanded", String(allExpanded));
+  }
+  function toggleProjects() {
+    const cards = [...document.querySelectorAll(".project-card")],
+      expand = cards.some((card) => !card.open);
+    cards.forEach((card) => (card.open = expand));
+    updateProjectToggle();
   }
   function showModal(title, eyebrow, body, onSave, saveLabel = "Save changes") {
     $("#modal-title").textContent = title;
