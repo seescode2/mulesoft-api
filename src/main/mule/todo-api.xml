@@ -33,6 +33,9 @@
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:error-response>
     </http:listener>
+    <logger level="INFO"
+            doc:name="Log client ID"
+            message='#["Client ID: " ++ (attributes.headers."client_id" default "unknown")]' />
     <apikit:router config-ref="todo-api-config" />
     <error-handler ref="todo-api-error-handler" />
   </flow>
