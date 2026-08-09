@@ -33,6 +33,9 @@
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:error-response>
     </http:listener>
+    <logger level="INFO"
+            doc:name="Log OAuth client identity"
+            message="OAuth client identity: #[authentication.principal]" />
     <apikit:router config-ref="todo-api-config" />
     <error-handler ref="todo-api-error-handler" />
   </flow>
