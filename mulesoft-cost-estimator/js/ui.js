@@ -139,6 +139,14 @@
       }
     ).name;
   }
+  function consumesAt(api, projectId, month) {
+    return (api.consumers || []).some(
+      (consumer) =>
+        consumer.projectId === projectId &&
+        consumer.startMonth <= month &&
+        (!consumer.endMonth || consumer.endMonth >= month),
+    );
+  }
   function groupClass(data, projectId) {
     const index = Math.max(
       0,
@@ -167,7 +175,8 @@
       apiRows = matchingApis.filter(
         (api) =>
           !state.filters.owner ||
-          state.filters.owner === Calc.owner(api, state.month),
+          state.filters.owner === Calc.owner(api, state.month) ||
+          consumesAt(api, state.filters.owner, state.month),
       ),
       workloadRows = matchingWorkloads.filter(
         (workload) =>
@@ -202,6 +211,15 @@
       ],
       activeProjectIds = new Set([
         ...matchingApis.map((api) => Calc.owner(api, state.month)),
+        ...matchingApis.flatMap((api) =>
+          (api.consumers || [])
+            .filter(
+              (consumer) =>
+                consumer.startMonth <= state.month &&
+                (!consumer.endMonth || consumer.endMonth >= state.month),
+            )
+            .map((consumer) => consumer.projectId),
+        ),
         ...matchingWorkloads.map(
           (workload) =>
             workload.projectId || "project_shared_platform",
@@ -212,7 +230,9 @@
         .map((project) => {
           const count =
             matchingApis.filter(
-              (api) => Calc.owner(api, state.month) === project.id,
+              (api) =>
+                Calc.owner(api, state.month) === project.id ||
+                consumesAt(api, project.id, state.month),
             ).length +
             matchingWorkloads.filter(
               (workload) =>
@@ -224,8 +244,13 @@
         .join(""),
       apiPill = (api) => {
         const owner = Calc.owner(api, state.month),
-          demand = Calc.apiDemand(api, state.month);
-        return `<button class="architecture-pill ${groupClass(data, owner)}" data-action="inspect-architecture-item" data-kind="api" data-id="${esc(api.id)}"><i></i><span><strong>${esc(api.name)}</strong><small>${esc(projectName(data, owner))} · ${n(demand.totalFlows)} flows</small></span><b aria-hidden="true">›</b></button>`;
+          demand = Calc.apiDemand(api, state.month),
+          relationship = state.filters.owner
+            ? owner === state.filters.owner
+              ? badge("Owned", "good")
+              : badge("Consumed", "relationship-consumed")
+            : "";
+        return `<button class="architecture-pill ${groupClass(data, owner)}" data-action="inspect-architecture-item" data-kind="api" data-id="${esc(api.id)}"><i></i><span><strong>${esc(api.name)} ${relationship}</strong><small>Owned by ${esc(projectName(data, owner))} · ${n(demand.totalFlows)} flows</small></span><b aria-hidden="true">›</b></button>`;
       },
       workloadPill = (workload) => {
         const owner = workload.projectId || "project_shared_platform";
@@ -236,9 +261,10 @@
         "API-led architecture",
         "APIs",
         `Read-only architecture and demand effective ${Timelines.label(state.month)}. Select any asset to inspect it.`,
+        '<button class="primary-button" data-action="add-workload">+ Add non-API workload</button>',
       ) +
       architectureFilters(data, state) +
-      `<section class="architecture-groups" aria-label="Architecture groups"><div><span class="group-label">Group by owning project</span><p>Color identifies the project responsible for each asset.</p></div><div class="group-keys"><button class="group-key group-all ${state.filters.owner ? "" : "active"}" data-group-filter=""><i></i>All groups</button>${groupButtons}</div></section><div class="architecture-stack">${layers
+      `<section class="architecture-groups" aria-label="Architecture groups"><div><span class="group-label">Filter by project relationship</span><p>Select a project to see APIs it owns and consumes. Color identifies the owner.</p></div><div class="group-keys"><button class="group-key group-all ${state.filters.owner ? "" : "active"}" data-group-filter=""><i></i>All projects</button>${groupButtons}</div></section><div class="architecture-stack">${layers
         .map(
           (layer) =>
             `<section class="architecture-layer layer-${layer.id}"><header><span class="layer-code">${layer.short}</span><div><h2>${layer.name}</h2><p>${layer.description}</p></div><strong>${layer.items.length}</strong></header><div class="architecture-pills">${layer.items.map(apiPill).join("") || `<div class="layer-empty">No ${layer.name.toLowerCase()} match this view.</div>`}</div></section>`,
@@ -253,7 +279,7 @@
       );
       if (!workload) return '<div class="empty">Workload not found.</div>';
       const owner = workload.projectId || "project_shared_platform";
-      return `<div class="inspector-heading"><span class="layer-code">JOB</span><p class="eyebrow">${esc(workload.kind || "Non-API workload")}</p><h2>${esc(workload.name)}</h2><p>${esc(workload.description || "No description provided.")}</p></div><div class="inspector-stats"><div><span>Group</span><strong>${esc(projectName(data, owner))}</strong></div><div><span>Lifecycle</span><strong>${esc(title(workload.lifecycle || "operational"))}</strong></div><div><span>Schedule</span><strong>${esc(workload.schedule || "Not recorded")}</strong></div><div><span>Environment</span><strong>${esc((Array.isArray(workload.environments) ? workload.environments : []).map((env) => String(env).toUpperCase()).join(", ") || "Not recorded")}</strong></div><div><span>Used flows</span><strong>${n(workload.flowUsed)}</strong></div><div><span>Reserved flows</span><strong>${n(workload.flowReserved)}</strong></div></div>`;
+      return `<div class="inspector-heading"><span class="layer-code">JOB</span><p class="eyebrow">${esc(workload.kind || "Non-API workload")}</p><h2>${esc(workload.name)}</h2><p>${esc(workload.description || "No description provided.")}</p><button class="quiet-button" data-action="edit-workload" data-id="${esc(workload.id)}">Edit workload</button></div><div class="inspector-stats"><div><span>Group</span><strong>${esc(projectName(data, owner))}</strong></div><div><span>Lifecycle</span><strong>${esc(title(workload.lifecycle || "operational"))}</strong></div><div><span>Schedule</span><strong>${esc(workload.schedule || "Not recorded")}</strong></div><div><span>Environment</span><strong>${esc((Array.isArray(workload.environments) ? workload.environments : []).map((env) => String(env).toUpperCase()).join(", ") || "Not recorded")}</strong></div><div><span>Used flows</span><strong>${n(workload.flowUsed)}</strong></div><div><span>Reserved flows</span><strong>${n(workload.flowReserved)}</strong></div></div>`;
     }
     const api = data.apis.find((item) => item.id === id);
     if (!api) return '<div class="empty">API not found.</div>';
@@ -296,16 +322,8 @@
             owned = data.apis.filter(
               (a) => Calc.owner(a, state.month) === p.id,
             ),
-            consumer = data.apis.reduce(
-              (x, a) =>
-                x +
-                a.consumers.filter(
-                  (c) =>
-                    c.projectId === p.id &&
-                    c.startMonth <= state.month &&
-                    (!c.endMonth || c.endMonth >= state.month),
-                ).length,
-              0,
+            consumed = data.apis.filter(
+              (api) => consumesAt(api, p.id, state.month),
             ),
             lifecycle = Calc.lifecycle(p, state.month),
             capacityCard = (pool) => {
@@ -326,8 +344,20 @@
                     });
                 return `<tr><td><strong>${esc(a.name)}</strong><span class="subtle">Base ${n(Timelines.effective(a.baseFlows, state.month, 0))} flows</span></td><td>${badge(title(Calc.lifecycle(a, state.month)))}</td>${["dev", "test", "prod"].map((e) => `<td><span class="state ${esc(env(e).flowState)}">${esc(title(env(e).flowState))}</span><br><span class="subtle">AM: ${esc(title(env(e).apiState))}</span></td>`).join("")}<td>${n(d.flow.used)}</td><td>${n(d.flow.reserved)}</td><td>${n(d.apiPre.used + d.apiPre.reserved)} / ${n(d.apiProd.used + d.apiProd.reserved)}</td><td><div class="row-actions"><button data-action="edit-api" data-id="${esc(a.id)}">Edit</button></div></td></tr>`;
               })
+              .join(""),
+            consumedRows = consumed
+              .map((api) => {
+                const owner = Calc.owner(api, state.month),
+                  relationship = (api.consumers || []).find(
+                    (c) =>
+                      c.projectId === p.id &&
+                      c.startMonth <= state.month &&
+                      (!c.endMonth || c.endMonth >= state.month),
+                  );
+                return `<tr><td><strong>${esc(api.name)}</strong></td><td>${badge("Consumed", "relationship-consumed")}</td><td>Owned by <strong>${esc(projectName(data, owner))}</strong></td><td>${esc(relationship?.notes || "—")}</td><td>${Timelines.label(relationship.startMonth)}${relationship.endMonth ? ` – ${Timelines.label(relationship.endMonth)}` : " onward"}</td></tr>`;
+              })
               .join("");
-          return `<details class="project-card"><summary class="project-card-head"><div><div class="project-title-line"><h2>${esc(p.name)}</h2>${badge(title(lifecycle))}</div><p>${p.builtIn ? "Built-in · protected" : esc(p.owner || "No owner")} · ${owned.length} owned API${owned.length === 1 ? "" : "s"} · ${consumer} consumer link${consumer === 1 ? "" : "s"}</p></div><span class="project-disclosure" aria-hidden="true">⌄</span></summary><div class="project-card-actions actions"><button class="primary-button" data-action="add-project-api" data-id="${esc(p.id)}" ${lifecycle === "archived" ? 'disabled title="Restore this project before adding an API"' : ""}>+ Add API</button><button class="quiet-button" data-action="edit-project" data-id="${esc(p.id)}">Edit project</button><button class="quiet-button" data-action="archive-project" data-id="${esc(p.id)}">${lifecycle === "archived" ? "Restore" : "Archive"}</button></div><div class="project-capacity-grid">${Object.keys(Calc.POOLS).map(capacityCard).join("")}</div><div class="project-apis"><div class="project-apis-head"><h3>APIs in this project</h3><span>Effective ${Timelines.label(state.month)}</span></div>${owned.length ? `<div class="table-wrap"><table><thead><tr><th>API</th><th>Lifecycle</th><th>DEV</th><th>TEST</th><th>PROD</th><th>Used flows</th><th>Reserved flows</th><th>API Manager pre/prod</th><th></th></tr></thead><tbody>${apiRows}</tbody></table></div>` : `<div class="empty project-api-empty">No APIs belong to this project for the selected month.<br><button class="quiet-button" data-action="add-project-api" data-id="${esc(p.id)}" ${lifecycle === "archived" ? "disabled" : ""}>+ Add the first API</button></div>`}</div></details>`;
+          return `<details class="project-card"><summary class="project-card-head"><div><div class="project-title-line"><h2>${esc(p.name)}</h2>${badge(title(lifecycle))}</div><p>${p.builtIn ? "Built-in · protected" : esc(p.owner || "No owner")} · ${owned.length} owned · ${consumed.length} consumed</p></div><span class="project-disclosure" aria-hidden="true">⌄</span></summary><div class="project-card-actions actions"><button class="primary-button" data-action="add-project-api" data-id="${esc(p.id)}" ${lifecycle === "archived" ? 'disabled title="Restore this project before adding an API"' : ""}>+ Add owned API</button><button class="quiet-button" data-action="add-consumed-api" data-id="${esc(p.id)}" ${lifecycle === "archived" ? "disabled" : ""}>+ Add consumed API</button><button class="quiet-button" data-action="edit-project" data-id="${esc(p.id)}">Edit project</button><button class="quiet-button" data-action="archive-project" data-id="${esc(p.id)}">${lifecycle === "archived" ? "Restore" : "Archive"}</button></div><div class="project-capacity-grid">${Object.keys(Calc.POOLS).map(capacityCard).join("")}</div><div class="project-apis relationship-owned"><div class="project-apis-head"><h3>${badge("Owned", "good")} APIs owned by this project</h3><span>Effective ${Timelines.label(state.month)}</span></div>${owned.length ? `<div class="table-wrap"><table><thead><tr><th>API</th><th>Lifecycle</th><th>DEV</th><th>TEST</th><th>PROD</th><th>Used flows</th><th>Reserved flows</th><th>API Manager pre/prod</th><th></th></tr></thead><tbody>${apiRows}</tbody></table></div>` : `<div class="empty project-api-empty">No APIs are owned by this project for the selected month.</div>`}</div><div class="project-apis relationship-consumed-section"><div class="project-apis-head"><h3>${badge("Consumed", "relationship-consumed")} APIs owned by other projects</h3></div>${consumed.length ? `<div class="table-wrap"><table><thead><tr><th>API</th><th>Relationship</th><th>Owner</th><th>Notes</th><th>Active dates</th></tr></thead><tbody>${consumedRows}</tbody></table></div>` : `<div class="empty project-api-empty">This project does not consume any APIs owned by another project.<br><button class="quiet-button" data-action="add-consumed-api" data-id="${esc(p.id)}" ${lifecycle === "archived" ? "disabled" : ""}>+ Add a consumed API</button></div>`}</div></details>`;
         })
         .join("") || '<div class="empty">No projects match these filters.</div>'}</div>`
     );
@@ -366,6 +396,7 @@
     esc,
     title,
     badge,
+    consumesAt,
     architectureDetail,
     render(view, data, state) {
       return {
