@@ -1,0 +1,97 @@
+.capacity-equation {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.purchased-meter {
+  display: flex;
+}
+
+.purchased-meter .used {
+  background: var(--blue);
+}
+
+.purchased-meter .reserved {
+  background: #f79009;
+}
+
+.capacity-label {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-tip {
+  position: relative;
+  display: inline-grid !important;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid #98a2b3;
+  border-radius: 50%;
+  background: transparent;
+  color: #667085;
+  font-size: 10px !important;
+  font-weight: 750;
+  font-style: normal;
+  line-height: 1;
+  cursor: help;
+}
+
+.info-tip::after {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: 220px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: var(--ink);
+  box-shadow: var(--shadow);
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translate(-50%, 4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.pool-stats > div:first-child .info-tip::after {
+  left: -8px;
+  transform: translate(0, 4px);
+}
+
+.pool-stats > div:last-child .info-tip::after {
+  right: -8px;
+  left: auto;
+  transform: translate(0, 4px);
+}
+
+.info-tip:hover::after,
+.info-tip:focus::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.pool-stats > div:first-child .info-tip:hover::after,
+.pool-stats > div:first-child .info-tip:focus::after,
+.pool-stats > div:last-child .info-tip:hover::after,
+.pool-stats > div:last-child .info-tip:focus::after {
+  transform: translate(0, 0);
+}
+
+.info-tip:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.negative {
+  color: var(--red);
+}
