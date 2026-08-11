@@ -302,6 +302,73 @@
       },
     );
   }
+  function workloadModal(id) {
+    const workload = id
+      ? (data.nonApiWorkloads || []).find((item) => item.id === id)
+      : null;
+    showModal(
+      workload ? "Edit non-API workload" : "Add non-API workload",
+      "Runtime workload",
+      `<div class="form-grid"><div class="field"><label>Workload name</label><input name="name" required value="${UI.esc(workload?.name || "")}"></div><div class="field"><label>Project</label><select name="projectId">${data.projects.map((p) => `<option value="${UI.esc(p.id)}" ${workload?.projectId === p.id ? "selected" : ""}>${UI.esc(p.name)}</option>`).join("")}</select></div><div class="field full"><label>Description</label><textarea name="description">${UI.esc(workload?.description || "")}</textarea></div><div class="field"><label>Workload type</label><select name="kind">${["Scheduled process", "Batch job", "Event worker", "Other"].map((kind) => `<option ${workload?.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></div><div class="field"><label>Lifecycle</label><select name="lifecycle">${["planned", "in-development", "operational", "on-hold", "archived"].map((life) => `<option ${workload?.lifecycle === life ? "selected" : ""}>${life}</option>`).join("")}</select></div><div class="field"><label>Schedule</label><input name="schedule" value="${UI.esc(workload?.schedule || "")}" placeholder="Daily at 02:00 UTC"></div><div class="field full"><span class="group-label">Environments</span><div class="checkbox-row">${["dev", "test", "prod"].map((env) => `<label><input type="checkbox" name="environments" value="${env}" ${(workload?.environments || []).includes(env) ? "checked" : ""}> ${env.toUpperCase()}</label>`).join("")}</div></div><div class="field"><label>Used flows</label><input type="number" min="0" name="flowUsed" value="${UI.esc(workload?.flowUsed || 0)}"></div><div class="field"><label>Reserved flows</label><input type="number" min="0" name="flowReserved" value="${UI.esc(workload?.flowReserved || 0)}"></div></div>`,
+      (fd) => {
+        if (+fd.get("flowUsed") < 0 || +fd.get("flowReserved") < 0)
+          return toast("Flows cannot be negative.");
+        const now = new Date().toISOString(),
+          item = workload || { id: Store.id("workload"), createdAt: now };
+        Object.assign(item, {
+          name: fd.get("name").trim(),
+          description: fd.get("description").trim(),
+          kind: fd.get("kind"),
+          projectId: fd.get("projectId"),
+          lifecycle: fd.get("lifecycle"),
+          schedule: fd.get("schedule").trim(),
+          environments: fd.getAll("environments"),
+          flowUsed: +fd.get("flowUsed"),
+          flowReserved: +fd.get("flowReserved"),
+          updatedAt: now,
+        });
+        if (!workload) (data.nonApiWorkloads ||= []).push(item);
+        close();
+        persist(workload ? "Workload updated." : "Workload created.");
+      },
+    );
+  }
+  function consumerModal(projectId) {
+    const project = data.projects.find((p) => p.id === projectId),
+      available = data.apis.filter(
+        (api) =>
+          Calc.owner(api, state.month) !== projectId &&
+          !UI.consumesAt(api, projectId, state.month),
+      );
+    showModal(
+      `Add API consumed by ${project.name}`,
+      "API consumer relationship",
+      available.length
+        ? `<div class="form-grid"><div class="field full"><label>API</label><select name="apiId">${available.map((api) => `<option value="${UI.esc(api.id)}">${UI.esc(api.name)} — owned by ${UI.esc(data.projects.find((p) => p.id === Calc.owner(api, state.month))?.name || "Missing project")}</option>`).join("")}</select></div><div class="field"><label>Starts</label><input type="month" name="startMonth" required value="${state.month}"></div><div class="field"><label>Ends <span class="subtle">optional</span></label><input type="month" name="endMonth"></div><div class="field full"><label>Notes</label><textarea name="notes"></textarea></div></div>`
+        : '<div class="empty">There are no APIs owned by another project.</div>',
+      (fd) => {
+        const api = data.apis.find((item) => item.id === fd.get("apiId"));
+        if (!api) return close();
+        const startMonth = fd.get("startMonth"),
+          endMonth = fd.get("endMonth");
+        if (endMonth && endMonth < startMonth)
+          return toast("End month cannot be before start month.");
+        api.consumers ||= [];
+        api.consumers.push({
+          projectId,
+          startMonth,
+          endMonth,
+          notes: fd.get("notes").trim(),
+        });
+        close();
+        persist("API consumer relationship added.");
+      },
+      "Add relationship",
+    );
+    if (!available.length)
+      $("#modal-actions").innerHTML =
+        '<button type="button" class="primary-button" data-close>Close</button>';
+  }
   function capacityModal(id) {
     const c = id ? data.capacityEntries.find((x) => x.id === id) : null;
     showModal(
@@ -518,9 +585,12 @@
     (
       ({
         "add-api": () => apiModal(),
+        "add-workload": () => workloadModal(),
+        "edit-workload": () => workloadModal(id),
         "inspect-architecture-item": () =>
           showInspector(actionTarget.dataset.kind, id),
         "add-project-api": () => apiModal(null, id),
+        "add-consumed-api": () => consumerModal(id),
         "edit-api": () => apiModal(id),
         "archive-api": () => archiveApi(id),
         "delete-api": () => {
