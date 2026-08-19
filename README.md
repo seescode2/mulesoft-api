@@ -1,4 +1,16 @@
-# MuleSoft Todo API
+# MuleSoft Proxy API
+
+This Mule application is a transparent HTTP proxy for a Node/Express service. It
+does not use the APIkit router or the TODO RAML at runtime. Requests received
+under `/api/v1/*` retain their method, path, query parameters, body, and headers
+when sent upstream, except that `client_id` and `client_secret` headers are
+removed after the API Manager policy has authenticated the request. The
+`Authorization` header is also removed so that bearer tokens are never exposed
+to the upstream service.
+
+The upstream defaults to `http://localhost:3000`. Override
+`upstream.protocol`, `upstream.host`, `upstream.port`, or `upstream.basePath` as
+Runtime Manager application properties when the Express service is elsewhere.
 
 This repository deploys the Mule application to Anypoint Runtime Manager when commits are pushed to a `release/*` branch. The deployment workflow is defined in [`.github/workflows/deploy-anypoint.yml`](.github/workflows/deploy-anypoint.yml).
 
@@ -57,10 +69,10 @@ The job:
 
 Before publishing another release, increment the Maven `<version>` in [`pom.xml`](pom.xml). Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
 
-The current live API path is:
+The proxy accepts every HTTP method and path under:
 
 ```text
-/api/v1/todos
+/api/v1/*
 ```
 
 ## Run MUnit tests locally

@@ -1,25 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
       xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
         http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
         http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
 
-  <munit:config name="todo-api-test-suite" />
+  <munit:config name="proxy-api-test-suite" />
 
-  <munit:test name="build-error-response-test"
-              description="The error response sub-flow returns the supplied error details">
+  <munit:test name="prepare-proxy-request-test"
+              description="Request metadata is retained except API Manager credentials and bearer authorization">
     <munit:execution>
-      <set-variable variableName="errorCode" value="TEST_ERROR" />
-      <set-variable variableName="errorMessage" value="Test error message" />
-      <flow-ref name="build-error-response" />
+      <munit:set-event>
+        <munit:attributes value='#[output application/java --- {
+            method: "POST",
+            requestPath: "/api/v1/orders",
+            queryParams: { verbose: "true" },
+            headers: {
+              "content-type": "application/json",
+              "x-correlation-id": "test-123",
+              "client_id": "do-not-forward",
+              "CLIENT_SECRET": "do-not-forward-either",
+              "Authorization": "Bearer do-not-forward-this-token"
+            }
+          }]' mediaType="application/java" />
+      </munit:set-event>
+      <flow-ref name="prepare-proxy-request" />
     </munit:execution>
     <munit:validation>
-      <munit-tools:assert-equals actual="#[payload.error]" expected="#[&quot;TEST_ERROR&quot;]" />
-      <munit-tools:assert-equals actual="#[payload.message]" expected="#[&quot;Test error message&quot;]" />
+      <munit-tools:assert-equals actual="#[vars.upstreamMethod]" expected='#["POST"]' />
+      <munit-tools:assert-equals actual="#[vars.upstreamPath]" expected='#["/api/v1/orders"]' />
+      <munit-tools:assert-equals actual="#[vars.upstreamQueryParams.verbose]" expected='#["true"]' />
+      <munit-tools:assert-equals actual="#[vars.upstreamHeaders.'content-type']" expected='#["application/json"]' />
+      <munit-tools:assert-equals actual="#[vars.upstreamHeaders.'x-correlation-id']" expected='#["test-123"]' />
+      <munit-tools:assert-equals actual="#[vars.upstreamHeaders.client_id default null]" expected="#[null]" />
+      <munit-tools:assert-equals actual="#[vars.upstreamHeaders.CLIENT_SECRET default null]" expected="#[null]" />
+      <munit-tools:assert-equals actual="#[vars.upstreamHeaders.Authorization default null]" expected="#[null]" />
     </munit:validation>
   </munit:test>
 </mule>
