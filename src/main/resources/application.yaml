@@ -5,3 +5,9 @@ http:
 api:
   manager:
     id: "${api.manager.id}"
+
+upstream:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "3000"
+  basePath: ""
