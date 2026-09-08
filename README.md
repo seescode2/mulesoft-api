@@ -75,6 +75,30 @@ mise exec java@17 -- mvn test
 The release-branch deployment workflow runs the same command before it publishes
 or deploys the application.
 
+## HTTP Request connector OAuth 2.0 example
+
+[`examples/oauth2-client-credentials-request.xml`](examples/oauth2-client-credentials-request.xml)
+is a self-contained example of an HTTP Request connector using its built-in
+OAuth 2.0 client credentials authentication. It shows a listener only so the
+request is easy to trigger while experimenting; the important parts are the
+`oauth:client-credentials-grant-type` nested in the request connection and the
+`http:request` that references that configuration.
+
+The example uses the reserved, non-resolving `example.test` domain and is not
+loaded as part of this application. To try it against a mock OAuth server:
+
+1. Copy the file into `src/main/mule` (or copy its configuration and flow into
+   an existing Mule configuration).
+2. Replace `auth.example.test`, `api.example.test`, and the scope with values
+   exposed by your mock authorization/resource server.
+3. Supply `oauth2.client.id` and `oauth2.client.secret` as external application
+   properties. Keep the secret out of source control.
+4. Start the application and call `GET http://localhost:8082/oauth2-example`.
+
+The connector posts the configured client credentials to the token URL,
+caches the returned access token, and adds the bearer token to the resource
+request. Application code should not add its own `Authorization` header.
+
 ## Update RAML workflow
 - Checkout `main` branch
 - Pull latest changes
