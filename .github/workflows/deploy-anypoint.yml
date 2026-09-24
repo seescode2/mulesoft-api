@@ -72,7 +72,7 @@ jobs:
 
       - name: Run MUnit tests
         shell: bash
-        run: mise exec java@17 -- mvn test
+        run: mise exec java@17 -- mvn install
 
       - name: Build and publish application to Exchange
         shell: bash
@@ -83,7 +83,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          mvn --batch-mode --no-transfer-progress mule:deploy -DmuleDeploy \
+          mvn --batch-mode --no-transfer-progress -pl todo-api mule:deploy -DmuleDeploy \
             -Danypoint.client.id="${ANYPOINT_CLIENT_ID}" \
             -Danypoint.client.secret="${ANYPOINT_CLIENT_SECRET}" \
             -Danypoint.platform.client.id="${ANYPOINT_ENV_CLIENT_ID}" \
@@ -117,7 +117,7 @@ jobs:
       EXCHANGE_ASSET_NAME: ${{ vars.EXCHANGE_ASSET_NAME || 'Todo API' }}
       EXCHANGE_API_VERSION: ${{ vars.EXCHANGE_API_VERSION || 'v1' }}
       RAML_MAIN_FILE: ${{ vars.RAML_MAIN_FILE || 'todo-api.raml' }}
-      RAML_SOURCE_FILE: ${{ vars.RAML_SOURCE_FILE || 'src/main/resources/api/todo-api.raml' }}
+      RAML_SOURCE_FILE: ${{ vars.RAML_SOURCE_FILE || 'todo-api/src/main/resources/api/todo-api.raml' }}
 
     steps:
       - name: Checkout

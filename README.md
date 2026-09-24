@@ -2,7 +2,16 @@
 
 This repository deploys the Mule application to Anypoint Runtime Manager when commits are pushed to a `release/*` branch. The deployment workflow is defined in [`.github/workflows/deploy-anypoint.yml`](.github/workflows/deploy-anypoint.yml).
 
-Additionally this deploys RAML files to Exchange.  Edit the raml file in `src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  When commits are pushed to a `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.
+Additionally this deploys RAML files to Exchange.  Edit the RAML file in `todo-api/src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  When commits are pushed to a `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.
+
+## Project layout
+
+This repository is a Maven multi-module build:
+
+- `todo-api/` contains the deployable Todo Mule application.
+- `common-mule-config/` is a Mule XML SDK library containing reusable Mule processing. Its `log-message-context` operation logs entry into the library, the current payload, and `vars.sent`.
+
+The Todo listener sets `vars.sent` and invokes the common operation before APIKit routes the request, so every Todo API request exercises the shared library.
 
 ## Configure GitHub Actions secrets
 
@@ -55,7 +64,7 @@ The job:
 3. deploys the Exchange application asset to CloudHub 2.0; and
 4. waits for Runtime Manager to confirm that the application started.
 
-Before publishing another release, increment the Maven `<version>` in [`pom.xml`](pom.xml). Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
+Before publishing another release, increment the parent Maven `<version>` in [`pom.xml`](pom.xml) and its matching child parent versions. Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
 
 The current live API path is:
 
@@ -69,17 +78,17 @@ The MUnit test suite requires Java 17. Run it through [mise](https://mise.jdx.de
 to select the correct Java version:
 
 ```bash
-mise exec java@17 -- mvn test
+mise exec java@17 -- mvn install
 ```
 
-The release-branch deployment workflow runs the same command before it publishes
+The `install` lifecycle is required so the shared Mule extension is available to the Todo application. The release-branch deployment workflow runs the same command before it publishes
 or deploys the application.
 
 ## Update RAML workflow
 - Checkout `main` branch
 - Pull latest changes
 - Make new branch called `feature/something`.
-- Edit the raml file in `src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.  
+- Edit the RAML file in `todo-api/src/main/resources/api/todo-api.raml`.  Do not edit the name of the file.
 - Commit code
 - Make new branch called `raml/*.*.*` where * is a semantic version number it will deploy to Exchange.  Check exchange to make sure this version does not already exist.
 - Push.  This should automatically cause github actions to push this to Exchange.
@@ -87,7 +96,7 @@ or deploys the application.
 ## Update Flows workflow
 - Checkout existing `feature/something`
 - Pull latest changes
-- Edit the flows.  
+- Edit the flows.
 - Make sure to increment the pom version.  Make sure this version does not already exist on Exchange.
 - Commit code
 - Make new branch called `release/*.*.*` where * is a semantic version number it will deploy to Exchange.

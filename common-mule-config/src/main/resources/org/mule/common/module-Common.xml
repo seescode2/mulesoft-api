@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="Common Mule Configuration"
+        prefix="common-config"
+        doc:description="Shared Mule processing used by applications in this repository."
+        xmlns="http://www.mulesoft.org/schema/mule/module"
+        xmlns:mule="http://www.mulesoft.org/schema/mule/core"
+        xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/module http://www.mulesoft.org/schema/mule/module/current/mule-module.xsd
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+  <operation name="log-message-context"
+             doc:description="Logs entry into the common library, followed by the payload and vars.sent.">
+    <body>
+      <mule:logger level="INFO" message="It's in the common library" />
+      <mule:logger level="INFO" message="#[payload]" />
+      <mule:logger level="INFO" message="#[vars.sent]" />
+    </body>
+  </operation>
+</module>
