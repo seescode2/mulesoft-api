@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>99252e89-57fb-4c7e-9289-d6be9663fd61</groupId>
+    <artifactId>mulesoft-api-parent</artifactId>
+    <version>1.0.31</version>
+  </parent>
+
+  <artifactId>common-mule-config</artifactId>
+  <packaging>mule-extension</packaging>
+  <name>Common Mule Configuration Library</name>
+  <description>Reusable Mule flows implemented as XML SDK operations.</description>
+
+  <properties>
+    <mule.runtime.version>4.11.0</mule.runtime.version>
+    <mule.extensions.maven.plugin.version>1.12.3</mule.extensions.maven.plugin.version>
+    <minMuleVersion>${mule.runtime.version}</minMuleVersion>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.mule.runtime</groupId>
+      <artifactId>mule-module-extensions-xml-support</artifactId>
+      <version>${mule.runtime.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.mule.runtime.plugins</groupId>
+        <artifactId>mule-extensions-maven-plugin</artifactId>
+        <version>${mule.extensions.maven.plugin.version}</version>
+        <extensions>true</extensions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <repositories>
+    <repository>
+      <id>mule</id>
+      <name>Mule Public Repository</name>
+      <url>https://repository.mulesoft.org/nexus/content/repositories/public/</url>
+    </repository>
+    <repository>
+      <id>mulesoft-releases</id>
+      <name>MuleSoft Releases Repository</name>
+      <url>https://repository.mulesoft.org/releases/</url>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>mulesoft-releases</id>
+      <name>MuleSoft Releases Repository</name>
+      <url>https://repository.mulesoft.org/releases/</url>
+    </pluginRepository>
+  </pluginRepositories>
+</project>

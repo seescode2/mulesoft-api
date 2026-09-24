@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+<mule xmlns:common-config="http://www.mulesoft.org/schema/mule/common-config"
+      xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
       xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
@@ -8,6 +9,7 @@
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/common-config http://www.mulesoft.org/schema/mule/common-config/current/mule-common-config.xsd
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
         http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
         http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
@@ -33,6 +35,8 @@
         <http:headers>#[vars.outboundHeaders default {}]</http:headers>
       </http:error-response>
     </http:listener>
+    <set-variable variableName="sent" value="#[true]" doc:name="Mark request as sent" />
+    <common-config:log-message-context doc:name="Log through common library" />
     <apikit:router config-ref="todo-api-config" />
     <error-handler ref="todo-api-error-handler" />
   </flow>
