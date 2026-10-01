@@ -2,3 +2,9 @@ target/
 .mule/
 .DS_Store
 *.tmp
+
+# Local corporate truststores and certificate material
+src/main/resources/tls/*.p12
+src/main/resources/tls/*.jks
+src/main/resources/tls/*.pem
+src/main/resources/tls/*.crt

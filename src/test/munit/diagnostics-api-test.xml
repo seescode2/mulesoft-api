@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+      xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+
+  <munit:config name="diagnostics-api-test-suite" />
+
+  <munit:test name="defaults-and-valid-host-test" description="Missing optional fields receive safe defaults">
+    <munit:execution>
+      <set-variable variableName="request" value="#[{host: 'example.com'}]" />
+      <flow-ref name="validate-target" />
+    </munit:execution>
+    <munit:validation>
+      <munit-tools:assert-equals actual="#[vars.target.port]" expected="#[443]" />
+      <munit-tools:assert-equals actual="#[vars.target.path]" expected="#[&quot;/&quot;]" />
+      <munit-tools:assert-equals actual="#[vars.target.method]" expected="#[&quot;GET&quot;]" />
+      <munit-tools:assert-equals actual="#[vars.target.trustProfile]" expected="#[&quot;default&quot;]" />
+    </munit:validation>
+  </munit:test>
+
+  <munit:test name="get-accepted-test"><munit:execution><set-variable variableName="request" value="#[{host:'example.com', method:'GET'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+  <munit:test name="head-accepted-test"><munit:execution><set-variable variableName="request" value="#[{host:'example.com', method:'HEAD', trustProfile:'corporate'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+  <munit:test name="post-rejected-test" expectedErrorType="DIAGNOSTICS:INVALID_TARGET"><munit:execution><set-variable variableName="request" value="#[{host:'example.com', method:'POST'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+  <munit:test name="put-rejected-test" expectedErrorType="DIAGNOSTICS:INVALID_TARGET"><munit:execution><set-variable variableName="request" value="#[{host:'example.com', method:'PUT'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+  <munit:test name="profile-rejected-test" expectedErrorType="DIAGNOSTICS:INVALID_TARGET"><munit:execution><set-variable variableName="request" value="#[{host:'example.com', trustProfile:'custom'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+  <munit:test name="https-scheme-rejected-test" expectedErrorType="DIAGNOSTICS:INVALID_TARGET"><munit:execution><set-variable variableName="request" value="#[{host:'https://example.com'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+  <munit:test name="http-scheme-rejected-test" expectedErrorType="DIAGNOSTICS:INVALID_TARGET"><munit:execution><set-variable variableName="request" value="#[{host:'http://example.com'}]"/><flow-ref name="validate-target"/></munit:execution></munit:test>
+
+  <munit:test name="localhost-blocked-test" expectedErrorType="DIAGNOSTICS:BLOCKED_TARGET">
+    <munit:execution><set-variable variableName="request" value="#[{host:'localhost'}]"/><flow-ref name="validate-target"/><flow-ref name="resolve-and-block-private-target"/></munit:execution>
+  </munit:test>
+  <munit:test name="ipv4-loopback-blocked-test" expectedErrorType="DIAGNOSTICS:BLOCKED_TARGET">
+    <munit:execution><set-variable variableName="request" value="#[{host:'127.0.0.1'}]"/><flow-ref name="validate-target"/><flow-ref name="resolve-and-block-private-target"/></munit:execution>
+  </munit:test>
+  <munit:test name="ipv6-loopback-blocked-test" expectedErrorType="DIAGNOSTICS:BLOCKED_TARGET">
+    <munit:execution><set-variable variableName="request" value="#[{host:'::1'}]"/><flow-ref name="validate-target"/><flow-ref name="resolve-and-block-private-target"/></munit:execution>
+  </munit:test>
+  <munit:test name="metadata-address-blocked-test" expectedErrorType="DIAGNOSTICS:BLOCKED_TARGET">
+    <munit:execution><set-variable variableName="request" value="#[{host:'169.254.169.254'}]"/><flow-ref name="validate-target"/><flow-ref name="resolve-and-block-private-target"/></munit:execution>
+  </munit:test>
+  <munit:test name="ipv6-link-local-blocked-test" expectedErrorType="DIAGNOSTICS:BLOCKED_TARGET">
+    <munit:execution><set-variable variableName="request" value="#[{host:'fe80::1'}]"/><flow-ref name="validate-target"/><flow-ref name="resolve-and-block-private-target"/></munit:execution>
+  </munit:test>
+</mule>
