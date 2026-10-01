@@ -2,6 +2,9 @@ http:
   host: "0.0.0.0"
   port: "8081"
 
-api:
-  manager:
-    id: "${api.manager.id}"
+# Supply both values externally. Never commit the truststore or its password.
+tls:
+  corporate:
+    truststore:
+      path: "${TLS_CORPORATE_TRUSTSTORE_PATH}"
+      password: "${TLS_CORPORATE_TRUSTSTORE_PASSWORD}"

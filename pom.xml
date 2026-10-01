@@ -5,11 +5,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>99252e89-57fb-4c7e-9289-d6be9663fd61</groupId>
-  <artifactId>mulesoft-todo-api-app</artifactId>
-  <version>1.0.30</version>
+  <artifactId>mulesoft-tls-diagnostics-app</artifactId>
+  <version>2.0.0</version>
   <packaging>mule-application</packaging>
 
-  <name>mulesoft-todo-api</name>
+  <name>mulesoft-tls-diagnostics</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,7 +18,6 @@
     <mule.runtime.version>4.11.0</mule.runtime.version>
     <munit.version>3.7.0</munit.version>
     <app.runtime>${mule.runtime.version}</app.runtime>
-    <api.manager.id>21030256</api.manager.id>
   </properties>
 
   <build>
@@ -49,7 +48,6 @@
             <vCores>${cloudhub.vcores}</vCores>
             <businessGroupId>${anypoint.business.group.id}</businessGroupId>
             <properties>
-              <api.manager.id>${api.manager.id}</api.manager.id>
               <anypoint.platform.client_id>${anypoint.platform.client.id}</anypoint.platform.client_id>
               <mule.env>${anypoint.environment}</mule.env>
             </properties>

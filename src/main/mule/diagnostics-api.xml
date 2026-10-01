@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+  <configuration-properties file="application.yaml" />
+
+  <http:listener-config name="Diagnostics_Listener">
+    <http:listener-connection host="${http.host}" port="${http.port}" />
+  </http:listener-config>
+
+  <!-- TLS_Default has an unconfigured trust-store element, so Mule/JVM trust defaults are used. -->
+  <tls:context name="TLS_Default"><tls:trust-store /></tls:context>
+  <tls:context name="TLS_Corporate">
+    <tls:trust-store path="${tls.corporate.truststore.path}"
+                     password="${tls.corporate.truststore.password}"
+                     type="PKCS12" />
+  </tls:context>
+
+  <http:request-config name="HTTPS_Default">
+    <http:request-connection protocol="HTTPS" host="#[vars.target.host]" port="#[vars.target.port]" tlsContext="TLS_Default" />
+  </http:request-config>
+  <http:request-config name="HTTPS_Corporate">
+    <http:request-connection protocol="HTTPS" host="#[vars.target.host]" port="#[vars.target.port]" tlsContext="TLS_Corporate" />
+  </http:request-config>
+
+  <flow name="post-diagnostics-test">
+    <http:listener config-ref="Diagnostics_Listener" path="/api/diagnostics/test" allowedMethods="POST">
+      <http:response statusCode="#[vars.httpStatus default 200]" />
+      <http:error-response statusCode="#[vars.httpStatus default 500]" />
+    </http:listener>
+    <set-variable variableName="request" value="#[payload]" />
+    <flow-ref name="run-diagnostic" />
+    <error-handler ref="diagnostics-global-errors" />
+  </flow>
+
+  <flow name="post-diagnostics-compare-trust">
+    <http:listener config-ref="Diagnostics_Listener" path="/api/diagnostics/compare-trust" allowedMethods="POST" />
+    <set-variable variableName="request" value="#[payload]" />
+    <flow-ref name="validate-target" />
+    <flow-ref name="resolve-and-block-private-target" />
+    <set-variable variableName="baseTarget" value="#[vars.target]" />
+    <set-variable variableName="target" value="#[vars.baseTarget ++ { trustProfile: 'default' }]" />
+    <flow-ref name="execute-request" target="defaultResult" />
+    <set-variable variableName="target" value="#[vars.baseTarget ++ { trustProfile: 'corporate' }]" />
+    <flow-ref name="execute-request" target="corporateResult" />
+    <ee:transform doc:name="Build comparison">
+      <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  target: vars.baseTarget.host,
+  port: vars.baseTarget.port,
+  path: vars.baseTarget.path,
+  method: vars.baseTarget.method,
+  results: { default: vars.defaultResult, corporate: vars.corporateResult },
+  trustDifference: if (!vars.defaultResult.success and vars.corporateResult.success)
+    "CORPORATE_TRUST_SUCCEEDED_WHERE_DEFAULT_FAILED" else null
+}]]></ee:set-payload></ee:message>
+    </ee:transform>
+    <error-handler ref="diagnostics-global-errors" />
+  </flow>
+
+  <flow name="get-diagnostics-certificate">
+    <http:listener config-ref="Diagnostics_Listener" path="/api/diagnostics/certificate" allowedMethods="GET" />
+    <ee:transform doc:name="Query to target request">
+      <ee:variables><ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+---
+{ host: attributes.queryParams.host default "", port: attributes.queryParams.port default 443,
+  path: "/", method: "HEAD", trustProfile: "default" }]]></ee:set-variable></ee:variables>
+    </ee:transform>
+    <flow-ref name="validate-target" />
+    <flow-ref name="resolve-and-block-private-target" />
+    <flow-ref name="execute-request" target="probe" />
+    <ee:transform doc:name="Explain connector certificate limitation">
+      <ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  host: vars.target.host,
+  port: vars.target.port,
+  tlsProbe: vars.probe,
+  certificate: null,
+  chain: [],
+  certificateDetailsAvailable: false,
+  limitation: "The standard Mule HTTP connector validates TLS but does not expose the peer X.509 session or certificate chain. This project intentionally has no custom Java certificate client. Use openssl s_client for chain display; the tlsProbe remains authoritative for this Mule runtime's default trust decision."
+}]]></ee:set-payload></ee:message>
+    </ee:transform>
+    <error-handler ref="diagnostics-global-errors" />
+  </flow>
+
+  <sub-flow name="run-diagnostic">
+    <flow-ref name="validate-target" />
+    <flow-ref name="resolve-and-block-private-target" />
+    <flow-ref name="execute-request" />
+  </sub-flow>
+
+  <sub-flow name="validate-target">
+    <ee:transform doc:name="Apply defaults and validate syntax">
+      <ee:variables>
+        <ee:set-variable variableName="target"><![CDATA[%dw 2.0
+output application/java
+var r = vars.request default {}
+---
+{
+  host: trim((r.host default "") as String),
+  port: (r.port default 443) as Number,
+  path: (r.path default "/") as String,
+  method: upper((r.method default "GET") as String),
+  trustProfile: lower((r.trustProfile default "default") as String)
+}]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <ee:transform doc:name="List validation failures">
+      <ee:variables><ee:set-variable variableName="validationErrors"><![CDATA[%dw 2.0
+output application/java
+var t = vars.target
+---
+flatten([
+  if (isEmpty(t.host)) ["host is required"] else [],
+  if ((t.host contains "://") or (t.host contains "/") or (t.host contains "@") or (t.host contains "?")) ["host must be a hostname or IP address without a scheme, path, user-info, or query"] else [],
+  if (t.port < 1 or t.port > 65535 or t.port != floor(t.port)) ["port must be an integer from 1 through 65535"] else [],
+  if (!(t.path startsWith "/") or (t.path startsWith "//") or (t.path contains "\r") or (t.path contains "\n")) ["path must start with one slash and contain no CR/LF"] else [],
+  if (!(t.method == "GET" or t.method == "HEAD")) ["method must be GET or HEAD"] else [],
+  if (!(t.trustProfile == "default" or t.trustProfile == "corporate")) ["trustProfile must be default or corporate"] else []
+])]]></ee:set-variable></ee:variables>
+    </ee:transform>
+    <choice>
+      <when expression="#[!isEmpty(vars.validationErrors)]">
+        <set-variable variableName="httpStatus" value="400" />
+        <raise-error type="DIAGNOSTICS:INVALID_TARGET" description="#[vars.validationErrors joinBy '; ']" />
+      </when>
+    </choice>
+  </sub-flow>
+
+  <sub-flow name="resolve-and-block-private-target">
+    <set-variable variableName="resolvedIpList" value="#[[]]" />
+    <try>
+      <ee:transform doc:name="Resolve all DNS addresses">
+        <ee:variables><ee:set-variable variableName="resolvedAddresses"><![CDATA[%dw 2.0
+output application/java
+import java!java::net::InetAddress
+---
+InetAddress::getAllByName(vars.target.host) map {
+  ip: $.hostAddress,
+  loopback: $.loopbackAddress,
+  linkLocal: $.linkLocalAddress
+}]]></ee:set-variable></ee:variables>
+      </ee:transform>
+      <error-handler>
+        <on-error-propagate type="ANY">
+          <raise-error type="DIAGNOSTICS:DNS_FAILURE" description="#[error.description]" />
+        </on-error-propagate>
+      </error-handler>
+    </try>
+    <foreach collection="#[vars.resolvedAddresses]">
+      <set-variable variableName="resolvedIpList" value="#[vars.resolvedIpList ++ [payload.ip]]" />
+      <choice>
+        <when expression="#[payload.loopback or payload.linkLocal]">
+          <raise-error type="DIAGNOSTICS:BLOCKED_TARGET" description="Target resolves to blocked loopback/link-local address" />
+        </when>
+      </choice>
+    </foreach>
+    <set-variable variableName="dnsResolved" value="true" />
+  </sub-flow>
+
+  <sub-flow name="execute-request">
+    <set-variable variableName="startedAt" value="#[now()]" />
+    <set-variable variableName="dnsResolved" value="#[vars.dnsResolved default true]" />
+    <try>
+      <!-- Payload and headers are explicitly empty: inbound credentials/body can never be proxied. -->
+      <set-payload value="#[null]" />
+      <choice>
+        <when expression="#[vars.target.trustProfile == 'corporate']">
+          <http:request config-ref="HTTPS_Corporate" method="#[vars.target.method]" path="#[vars.target.path]" target="remoteResponse" targetValue="#[{ body: payload, status: attributes.statusCode }]">
+            <http:headers>#[{}]</http:headers>
+            <http:response-validator><http:success-status-code-validator values="0..599" /></http:response-validator>
+          </http:request>
+        </when>
+        <otherwise>
+          <http:request config-ref="HTTPS_Default" method="#[vars.target.method]" path="#[vars.target.path]" target="remoteResponse" targetValue="#[{ body: payload, status: attributes.statusCode }]">
+            <http:headers>#[{}]</http:headers>
+            <http:response-validator><http:success-status-code-validator values="0..599" /></http:response-validator>
+          </http:request>
+        </otherwise>
+      </choice>
+      <set-variable variableName="remoteStatus" value="#[vars.remoteResponse.status]" />
+      <ee:transform doc:name="Normalize HTTP result"><ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var status = vars.remoteStatus as Number
+---
+vars.target ++ {
+  success: status < 400,
+  dnsResolved: true, tcpConnected: true, tlsHandshake: true, httpConnected: true,
+  statusCode: status,
+  durationMs: ((now() - vars.startedAt) as Number {unit: "milliseconds"}),
+  errorCategory: if (status >= 500) "HTTP_5XX" else if (status >= 400) "HTTP_4XX" else null,
+  muleErrorType: null, errorMessage: null,
+  timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload></ee:message></ee:transform>
+      <error-handler>
+        <on-error-continue type="ANY">
+          <set-variable variableName="caughtErrorType" value="#[error.errorType.identifier]" />
+          <set-variable variableName="caughtErrorMessage" value="#[error.description default error.detailedDescription default 'Connectivity error']" />
+          <ee:transform doc:name="Conservative connectivity classification"><ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var m = lower(vars.caughtErrorMessage)
+var category =
+  if ((m contains "pkix") or (m contains "unable to find valid certification path") or (m contains "certificate_unknown")) "TLS_UNTRUSTED_CERTIFICATE"
+  else if ((m contains "hostname") and ((m contains "match") or (m contains "subject alternative"))) "TLS_HOSTNAME_MISMATCH"
+  else if ((m contains "sslhandshake") or (m contains "handshake_failure") or (m contains "tls handshake")) "TLS_HANDSHAKE_FAILURE"
+  else if ((m contains "timed out") or (m contains "timeout")) "CONNECTION_TIMEOUT"
+  else if ((m contains "connection refused")) "CONNECTION_REFUSED"
+  else "UNKNOWN_CONNECTIVITY_ERROR"
+var tlsFailure = category startsWith "TLS_"
+---
+vars.target ++ {
+  success: false, dnsResolved: true,
+  tcpConnected: if (tlsFailure) true else null,
+  tlsHandshake: if (tlsFailure) false else null,
+  httpConnected: false, statusCode: null,
+  durationMs: ((now() - vars.startedAt) as Number {unit: "milliseconds"}),
+  errorCategory: category,
+  muleErrorType: "HTTP:" ++ vars.caughtErrorType,
+  errorMessage: vars.caughtErrorMessage,
+  timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload></ee:message></ee:transform>
+        </on-error-continue>
+      </error-handler>
+    </try>
+    <logger level="INFO" category="com.acme.diagnostics" message='#[write({event: "https_diagnostic", correlationId: correlationId, host: vars.target.host, port: vars.target.port, method: vars.target.method, trustProfile: vars.target.trustProfile, durationMs: payload.durationMs, success: payload.success, statusCode: payload.statusCode, errorCategory: payload.errorCategory, muleErrorType: payload.muleErrorType}, "application/json")]' />
+  </sub-flow>
+
+  <error-handler name="diagnostics-global-errors">
+    <on-error-continue type="DIAGNOSTICS:INVALID_TARGET,DIAGNOSTICS:BLOCKED_TARGET,DIAGNOSTICS:DNS_FAILURE">
+      <set-variable variableName="httpStatus" value="400" />
+      <ee:transform><ee:message><ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var category = error.errorType.identifier
+---
+(vars.target default {}) ++ {
+  success: false,
+  dnsResolved: if (category == "DNS_FAILURE") false else null,
+  tcpConnected: false, tlsHandshake: false, httpConnected: false, statusCode: null,
+  durationMs: null, errorCategory: category,
+  muleErrorType: error.errorType.namespace ++ ":" ++ error.errorType.identifier,
+  errorMessage: error.description,
+  timestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+}]]></ee:set-payload></ee:message></ee:transform>
+    </on-error-continue>
+  </error-handler>
+</mule>
