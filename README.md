@@ -31,6 +31,10 @@ The connected-app credentials and environment credentials are different credenti
 
 Do not commit any of these values to the repository, Maven configuration, workflow YAML, or application property files.
 
+### Pom.xml changes
+
+IMPORTANT: You will need to update the api.manager.id and groupid in the pom file.
+
 ### Connected app permissions
 
 Create or edit the connected app under **Access Management → Connected Apps**. It must be an app that **acts on its own behalf using client credentials** and must be scoped to the business group and `Sandbox` environment used by this deployment.
