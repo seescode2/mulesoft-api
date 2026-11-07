@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+      xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns:os="http://www.mulesoft.org/schema/mule/os"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+        http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+
+  <global-property name="sondahub.integration.enabled" value="false" />
+  <munit:config name="sondahub-oauth-integration-suite" />
+
+  <!-- The Python harness starts a loopback OAuth server and enables this test. -->
+  <munit:test name="sondahub-real-connector-oauth-test"
+              ignore="#[p('sondahub.integration.enabled') != 'true']"
+              description="Exercise the real connector, OAuth manager, and Object Store">
+    <munit:execution>
+      <flow-ref name="get:\todos:todo-api-config" />
+      <munit-tools:assert-equals actual="#[payload.ok]" expected="#[true]" />
+      <flow-ref name="get:\todos:todo-api-config" />
+      <munit-tools:assert-equals actual="#[payload.ok]" expected="#[true]" />
+      <!-- The stub rejects the next request with 401, requiring a new token. -->
+      <flow-ref name="get:\todos:todo-api-config" />
+      <munit-tools:assert-equals actual="#[payload.ok]" expected="#[true]" />
+      <os:retrieve-all objectStore="sondahub-oauth-object-store" target="oauthContexts" />
+      <munit-tools:assert-that expression="#[isEmpty(vars.oauthContexts)]"
+                               is="#[MunitTools::equalTo(false)]"
+                               message="The token manager must persist its context in the configured Object Store" />
+      <try>
+        <!-- Insufficient scope must propagate without another token request. -->
+        <flow-ref name="get:\todos:todo-api-config" />
+        <error-handler>
+          <on-error-continue type="HTTP:FORBIDDEN" logException="false">
+            <set-variable variableName="forbiddenReceived" value="#[true]" />
+          </on-error-continue>
+        </error-handler>
+      </try>
+    </munit:execution>
+    <munit:validation>
+      <munit-tools:assert-equals actual="#[vars.forbiddenReceived default false]" expected="#[true]" />
+    </munit:validation>
+  </munit:test>
+</mule>

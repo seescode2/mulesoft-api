@@ -10,6 +10,51 @@
 
   <munit:config name="todo-api-test-suite" />
 
+  <munit:test name="get-todos-returns-sondahub-response-test"
+              description="GET todos returns the protected resource response unchanged">
+    <munit:behavior>
+      <munit-tools:mock-when processor="http:request">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="config-ref" whereValue="sondahub-http-request-config" />
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value='#[output application/json --- {ok: true, scope: "read"}]' mediaType="application/json" />
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <munit:execution>
+      <flow-ref name="get:\todos:todo-api-config" />
+    </munit:execution>
+    <munit:validation>
+      <munit-tools:assert-equals actual="#[payload]" expected='#[{ok: true, scope: "read"}]' />
+      <munit-tools:verify-call processor="http:request" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="config-ref" whereValue="sondahub-http-request-config" />
+          <munit-tools:with-attribute attributeName="method" whereValue="GET" />
+          <munit-tools:with-attribute attributeName="path" whereValue="/v1/utils/oauth/protected" />
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+    </munit:validation>
+  </munit:test>
+
+  <munit:test name="get-todos-propagates-upstream-failure-test"
+              description="An upstream failure is propagated to the existing API error handler"
+              expectedErrorType="HTTP:CONNECTIVITY">
+    <munit:behavior>
+      <munit-tools:mock-when processor="http:request">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="config-ref" whereValue="sondahub-http-request-config" />
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:error typeId="HTTP:CONNECTIVITY" />
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <munit:execution>
+      <flow-ref name="get:\todos:todo-api-config" />
+    </munit:execution>
+  </munit:test>
+
   <munit:test name="build-error-response-test"
               description="The error response sub-flow returns the supplied error details">
     <munit:execution>
