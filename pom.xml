@@ -6,7 +6,7 @@
 
   <groupId>41c361af-8e80-40b5-bb01-77f3e308757f</groupId>
   <artifactId>mulesoft-todo-api-app</artifactId>
-  <version>1.0.32</version>
+  <version>1.0.33</version>
   <packaging>mule-application</packaging>
 
   <name>mulesoft-todo-api</name>
@@ -15,7 +15,11 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <mule.maven.plugin.version>4.9.1</mule.maven.plugin.version>
-    <mule.runtime.version>4.13.2</mule.runtime.version>
+    <mule.runtime.version>4.11.0</mule.runtime.version>
+    <!-- CloudHub runtime patches are selected independently of the MUnit runtime. -->
+    <cloudhub.runtime.version>4.13.2</cloudhub.runtime.version>
+    <cloudhub.release.channel>EDGE</cloudhub.release.channel>
+    <cloudhub.java.version>17</cloudhub.java.version>
     <munit.version>3.7.0</munit.version>
     <app.runtime>${mule.runtime.version}</app.runtime>
     <api.manager.id>21280783</api.manager.id>
@@ -42,7 +46,9 @@
             <connectedAppGrantType>client_credentials</connectedAppGrantType>
             <environment>${anypoint.environment}</environment>
             <target>${anypoint.target}</target>
-            <muleVersion>${mule.runtime.version}</muleVersion>
+            <muleVersion>${cloudhub.runtime.version}</muleVersion>
+            <releaseChannel>${cloudhub.release.channel}</releaseChannel>
+            <javaVersion>${cloudhub.java.version}</javaVersion>
             <server>${anypoint.server}</server>
             <applicationName>${cloudhub.application.name}</applicationName>
             <replicas>${cloudhub.replicas}</replicas>

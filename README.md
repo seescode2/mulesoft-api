@@ -61,6 +61,22 @@ The job:
 
 Before publishing another release, increment the Maven `<version>` in [`pom.xml`](pom.xml). Exchange release versions are immutable, so reusing an already-published version causes the publication step to fail.
 
+### Deployment runtime
+
+The CloudHub 2.0 deployment explicitly selects Mule `4.13.2`, the `EDGE`
+release channel, and Java `17` through the `cloudhub.runtime.version`,
+`cloudhub.release.channel`, and `cloudhub.java.version` POM properties.
+The selected runtime must be available on the deployment target.
+
+`mule.runtime.version` and `app.runtime` remain `4.11.0` for the MUnit runtime
+dependency. Changing a CloudHub patch version does not require changing that
+dependency: CloudHub runtime availability and Maven artifact availability are
+separate. Tests therefore run on 4.11.0, rather than the deployed 4.13.2 runtime.
+The application's declared minimum Mule version remains 4.11.0.
+
+Do not switch this application to the offered 4.9 or 4.6 LTS runtimes without
+first verifying compatibility and adjusting its minimum runtime and test setup.
+
 The current live API path is:
 
 ```text
