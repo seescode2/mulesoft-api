@@ -15,7 +15,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <mule.maven.plugin.version>4.9.1</mule.maven.plugin.version>
-    <mule.runtime.version>4.11.0</mule.runtime.version>
+    <mule.runtime.version>4.13.2</mule.runtime.version>
     <munit.version>3.7.0</munit.version>
     <app.runtime>${mule.runtime.version}</app.runtime>
     <api.manager.id>21280783</api.manager.id>
