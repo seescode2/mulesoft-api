@@ -3,12 +3,16 @@
       xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:oauth="http://www.mulesoft.org/schema/mule/oauth"
+      xmlns:os="http://www.mulesoft.org/schema/mule/os"
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/oauth http://www.mulesoft.org/schema/mule/oauth/current/mule-oauth.xsd
+        http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
         http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
         http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
         http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
@@ -18,6 +22,28 @@
   <http:listener-config name="todo-api-http-listener-config">
     <http:listener-connection host="${http.host}" port="${http.port}" />
   </http:listener-config>
+
+  <os:object-store name="sondahub-oauth-object-store" persistent="true" />
+  <oauth:token-manager-config name="sondahub-oauth-token-manager"
+                            objectStore="sondahub-oauth-object-store" />
+
+  <http:request-config name="sondahub-http-request-config">
+    <http:request-connection protocol="${sondahub.protocol}"
+                             host="${sondahub.host}" port="${sondahub.port}">
+      <http:authentication>
+        <oauth:client-credentials-grant-type
+            clientId="${sondahub.oauth.clientId}"
+            clientSecret="${sondahub.oauth.clientSecret}"
+            tokenUrl="${sondahub.oauth.tokenUrl}"
+            scopes="${sondahub.oauth.scopes}"
+            encodeClientCredentialsInBody="false"
+            tokenManager="sondahub-oauth-token-manager"
+            responseAccessToken="#[payload.access_token]"
+            responseExpiresIn="#[payload.expires_in]"
+            refreshTokenWhen="#[attributes.statusCode == 401]" />
+      </http:authentication>
+    </http:request-connection>
+  </http:request-config>
 
   <api-gateway:autodiscovery apiId="${api.manager.id}" flowRef="todo-api-main" />
 
@@ -52,37 +78,9 @@ output application/json
   </sub-flow>
 
   <flow name="get:\todos:todo-api-config">
-    <ee:transform doc:name="Return mock todos">
-      <ee:message>
-        <ee:set-payload><![CDATA[%dw 2.0
-output application/json
-var todos = [
-  {
-    id: "mock-todo-1",
-    title: "Review API requirements Madam",
-    description: "Mocked todo returned by the API",
-    status: "pending",
-    dueDate: "2026-07-15",
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  },
-  {
-    id: "mock-todo-2",
-    title: "Deploy Mule app",
-    description: "Second mocked todo returned by the API",
-    status: "completed",
-    dueDate: null,
-    createdAt: "2026-07-14T00:00:00Z",
-    updatedAt: "2026-07-14T00:00:00Z"
-  }
-]
----
-if (attributes.queryParams.status? and !isEmpty(attributes.queryParams.status))
-  todos filter ($.status == attributes.queryParams.status)
-else
-  todos]]></ee:set-payload>
-      </ee:message>
-    </ee:transform>
+    <http:request doc:name="Get SondaHub protected resource" method="GET"
+                  config-ref="sondahub-http-request-config"
+                  path="${sondahub.protectedPath}" sendBodyMode="NEVER" />
   </flow>
 
   <flow name="post:\todos:application\json:todo-api-config">

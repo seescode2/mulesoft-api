@@ -85,6 +85,9 @@ The current live API path is:
 
 ## Run MUnit tests locally
 
+The SondaHub OAuth proof of concept is documented in
+[docs/sondahub-oauth-poc.md](docs/sondahub-oauth-poc.md).
+
 The MUnit test suite requires Java 17. Run it through [mise](https://mise.jdx.dev/)
 to select the correct Java version:
 

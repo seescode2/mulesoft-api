@@ -5,3 +5,16 @@ http:
 api:
   manager:
     id: "${api.manager.id}"
+
+# Public playground credentials from https://www.sondahub.com/oauth2-test-server/
+# Override these application properties when using a registered client.
+sondahub:
+  host: "api.sondahub.com"
+  port: "443"
+  protocol: "HTTPS"
+  protectedPath: "/v1/utils/oauth/protected"
+  oauth:
+    tokenUrl: "https://api.sondahub.com/v1/utils/oauth/token"
+    clientId: "sonda"
+    clientSecret: "probe-secret"
+    scopes: "read"
